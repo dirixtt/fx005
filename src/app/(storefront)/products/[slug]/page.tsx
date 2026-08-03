@@ -1,4 +1,6 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
+import { ChevronLeft, PackageX } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { AddToCartButton } from "@/components/storefront/add-to-cart-button";
 import { formatMoney } from "@/lib/utils";
@@ -9,7 +11,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
   const { data: product } = await supabase
     .from("products")
-    .select("*")
+    .select("*, categories(id, name)")
     .eq("slug", slug)
     .maybeSingle();
 
@@ -18,32 +20,52 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   }
 
   return (
-    <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-      <div className="flex aspect-square items-center justify-center rounded-lg bg-neutral-100 text-neutral-300">
-        {product.image_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={product.image_url} alt={product.name} className="h-full w-full rounded-lg object-cover" />
-        ) : (
-          <span className="text-sm">No image</span>
-        )}
-      </div>
-      <div className="space-y-4">
-        <h1 className="text-2xl font-semibold text-neutral-900">{product.name}</h1>
-        <p className="text-xl text-neutral-700">{formatMoney(product.sale_price)}</p>
-        {product.description && <p className="text-neutral-600">{product.description}</p>}
-        {product.stock_quantity > 0 ? (
-          <AddToCartButton
-            product={{
-              id: product.id,
-              name: product.name,
-              slug: product.slug,
-              sale_price: product.sale_price,
-              image_url: product.image_url,
-            }}
-          />
-        ) : (
-          <p className="text-sm font-medium text-red-600">Out of stock</p>
-        )}
+    <div className="space-y-6">
+      <Link href="/" className="inline-flex items-center gap-1 text-sm font-medium text-neutral-500 hover:text-brand-700">
+        <ChevronLeft className="h-4 w-4" /> Назад к каталогу
+      </Link>
+
+      <div className="grid grid-cols-1 gap-10 md:grid-cols-2">
+        <div className="flex aspect-square items-center justify-center overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-100 text-neutral-300">
+          {product.image_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={product.image_url} alt={product.name} className="h-full w-full object-cover" />
+          ) : (
+            <PackageX className="h-16 w-16" strokeWidth={1.25} />
+          )}
+        </div>
+        <div className="space-y-5">
+          {product.categories?.name && (
+            <Link
+              href={`/?category=${product.categories.id}`}
+              className="inline-block rounded-full bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-700 hover:bg-brand-100"
+            >
+              {product.categories.name}
+            </Link>
+          )}
+          <h1 className="text-2xl font-bold text-neutral-900 sm:text-3xl">{product.name}</h1>
+          <p className="text-3xl font-bold text-brand-700">{formatMoney(product.sale_price)}</p>
+          {product.description && <p className="leading-relaxed text-neutral-600">{product.description}</p>}
+
+          {product.stock_quantity > 0 ? (
+            <div className="space-y-2">
+              <p className="text-sm text-neutral-500">В наличии: {product.stock_quantity} шт.</p>
+              <AddToCartButton
+                product={{
+                  id: product.id,
+                  name: product.name,
+                  slug: product.slug,
+                  sale_price: product.sale_price,
+                  image_url: product.image_url,
+                }}
+              />
+            </div>
+          ) : (
+            <p className="inline-block rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
+              Нет в наличии
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );

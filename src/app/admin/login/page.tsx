@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { motion } from "motion/react";
+import { Wrench } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -78,74 +80,93 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-neutral-50 px-4">
-      <Card className="w-full max-w-sm">
-        <CardHeader>
-          <CardTitle className="text-lg font-semibold text-neutral-900">
-            {mode === "signup" ? "Create your owner account" : "Store owner login"}
-          </CardTitle>
-          {mode === "signup" && (
-            <p className="text-sm text-neutral-500">
-              No owner account exists yet. Set one up now — this is the only login for the store.
-            </p>
-          )}
-        </CardHeader>
-        <CardContent>
-          {mode === "loading" && <p className="text-sm text-neutral-500">Loading...</p>}
+    <div className="flex min-h-screen items-center justify-center bg-ink-950 px-4">
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="w-full max-w-sm"
+      >
+        <div className="mb-6 flex flex-col items-center gap-3 text-center">
+          <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-600 text-white shadow-lg shadow-brand-900/40">
+            <Wrench className="h-6 w-6" strokeWidth={2.5} />
+          </span>
+          <div>
+            <p className="text-lg font-bold text-white">fx005</p>
+            <p className="text-xs text-neutral-400">Панель управления магазином</p>
+          </div>
+        </div>
 
-          {mode === "check-email" && (
-            <div className="space-y-3 text-sm text-neutral-700">
-              <p>We sent a confirmation link to <strong>{email}</strong>.</p>
-              <p>Click the link in that email, then come back and log in below.</p>
-              <Button variant="outline" className="w-full" onClick={() => setMode("login")}>
-                Go to login
-              </Button>
-            </div>
-          )}
+        <Card className="border-neutral-800 bg-white">
+          <CardHeader>
+            <CardTitle className="text-base font-semibold normal-case tracking-normal text-neutral-900">
+              {mode === "signup" ? "Создать аккаунт владельца" : "Вход для владельца"}
+            </CardTitle>
+            {mode === "signup" && (
+              <p className="text-sm text-neutral-500">
+                Аккаунт владельца ещё не создан. Это единственный логин для магазина.
+              </p>
+            )}
+          </CardHeader>
+          <CardContent>
+            {mode === "loading" && <p className="text-sm text-neutral-500">Загрузка...</p>}
 
-          {(mode === "signup" || mode === "login") && (
-            <form onSubmit={mode === "signup" ? handleSignup : handleLogin} className="space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
+            {mode === "check-email" && (
+              <div className="space-y-3 text-sm text-neutral-700">
+                <p>
+                  Мы отправили ссылку для подтверждения на <strong>{email}</strong>.
+                </p>
+                <p>Перейдите по ссылке в письме, затем вернитесь и войдите ниже.</p>
+                <Button variant="outline" className="w-full" onClick={() => setMode("login")}>
+                  Перейти ко входу
+                </Button>
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  required
-                  minLength={mode === "signup" ? 8 : undefined}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-              </div>
-              {mode === "signup" && (
+            )}
+
+            {(mode === "signup" || mode === "login") && (
+              <form onSubmit={mode === "signup" ? handleSignup : handleLogin} className="space-y-4">
                 <div className="space-y-1.5">
-                  <Label htmlFor="confirmPassword">Confirm password</Label>
+                  <Label htmlFor="email">Email</Label>
                   <Input
-                    id="confirmPassword"
-                    type="password"
+                    id="email"
+                    type="email"
                     required
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                   />
                 </div>
-              )}
-              {error && <p className="text-sm text-red-600">{error}</p>}
-              <Button type="submit" className="w-full" disabled={submitting}>
-                {submitting ? "Please wait..." : mode === "signup" ? "Create account" : "Log in"}
-              </Button>
-            </form>
-          )}
-        </CardContent>
-      </Card>
+                <div className="space-y-1.5">
+                  <Label htmlFor="password">Пароль</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    required
+                    minLength={mode === "signup" ? 8 : undefined}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                </div>
+                {mode === "signup" && (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="confirmPassword">Подтвердите пароль</Label>
+                    <Input
+                      id="confirmPassword"
+                      type="password"
+                      required
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                    />
+                  </div>
+                )}
+                {error && <p className="text-sm text-red-600">{error}</p>}
+                <Button type="submit" className="w-full" disabled={submitting}>
+                  {submitting ? "Подождите..." : mode === "signup" ? "Создать аккаунт" : "Войти"}
+                </Button>
+              </form>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
     </div>
   );
 }

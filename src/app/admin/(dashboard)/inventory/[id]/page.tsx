@@ -22,10 +22,10 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/admin/inventory" className="text-sm text-neutral-500 hover:underline">
-          ← Back to inventory
+        <Link href="/admin/inventory" className="text-sm text-neutral-500 hover:text-brand-700 hover:underline">
+          ← Назад к складу
         </Link>
-        <h1 className="mt-1 text-xl font-semibold text-neutral-900">Edit {product.name}</h1>
+        <h1 className="mt-1 text-xl font-bold text-neutral-900">Редактировать: {product.name}</h1>
       </div>
       <ProductForm action={boundAction} categories={categories ?? []} product={product} />
     </div>

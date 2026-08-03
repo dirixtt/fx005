@@ -1,43 +1,63 @@
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { formatMoney } from "@/lib/utils";
+import { ProductGrid } from "@/components/storefront/product-grid";
+import { Pagination } from "@/components/storefront/pagination";
 
-export default async function StorefrontHomePage() {
+const PAGE_SIZE = 24;
+
+export default async function StorefrontHomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ category?: string; q?: string; page?: string }>;
+}) {
+  const { category, q, page: pageParam } = await searchParams;
+  const page = Math.max(1, Number(pageParam) || 1);
   const supabase = await createClient();
-  const { data: products } = await supabase
+
+  let query = supabase
     .from("products")
-    .select("id, name, slug, sale_price, image_url, stock_quantity")
-    .order("created_at", { ascending: false });
+    .select("id, name, slug, sale_price, image_url, stock_quantity, category_id", { count: "exact" })
+    .eq("is_active", true)
+    .eq("show_on_storefront", true);
+
+  if (category) query = query.eq("category_id", category);
+  if (q) query = query.ilike("name", `%${q}%`);
+
+  const from = (page - 1) * PAGE_SIZE;
+  const { data: products, count } = await query
+    .order("name")
+    .range(from, from + PAGE_SIZE - 1);
+
+  const totalPages = Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE));
+
+  const makeHref = (p: number) => {
+    const params = new URLSearchParams();
+    if (category) params.set("category", category);
+    if (q) params.set("q", q);
+    if (p > 1) params.set("page", String(p));
+    const qs = params.toString();
+    return qs ? `/?${qs}` : "/";
+  };
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold text-neutral-900">Shop our products</h1>
-
-      {!products?.length && (
-        <p className="text-neutral-500">No products available yet — check back soon.</p>
-      )}
-
-      <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 md:grid-cols-4">
-        {products?.map((p) => (
-          <Link
-            key={p.id}
-            href={`/products/${p.slug}`}
-            className="group rounded-lg border border-neutral-200 p-3 transition-colors hover:border-neutral-400"
-          >
-            <div className="mb-3 flex aspect-square items-center justify-center rounded-md bg-neutral-100 text-neutral-300">
-              {p.image_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={p.image_url} alt={p.name} className="h-full w-full rounded-md object-cover" />
-              ) : (
-                <span className="text-xs">No image</span>
-              )}
-            </div>
-            <p className="text-sm font-medium text-neutral-900 group-hover:underline">{p.name}</p>
-            <p className="text-sm text-neutral-500">{formatMoney(p.sale_price)}</p>
-            {p.stock_quantity <= 0 && <p className="text-xs text-red-600">Out of stock</p>}
-          </Link>
-        ))}
+      <div className="overflow-hidden rounded-2xl bg-ink-950 px-6 py-8 sm:px-10 sm:py-12">
+        <p className="text-xs font-semibold uppercase tracking-widest text-brand-400">Магазин инструментов</p>
+        <h1 className="mt-2 max-w-lg text-2xl font-bold text-white sm:text-3xl">
+          {q ? `Результаты по запросу «${q}»` : "Всё для дома, стройки и сада"}
+        </h1>
+        <p className="mt-2 max-w-md text-sm text-neutral-400">
+          {count ?? 0} товаров в наличии — от отвёрток и замков до кабеля и электрофурнитуры.
+        </p>
       </div>
+
+      {!products?.length ? (
+        <p className="py-12 text-center text-neutral-500">Товары не найдены — попробуйте другой запрос.</p>
+      ) : (
+        <>
+          <ProductGrid products={products} />
+          <Pagination page={page} totalPages={totalPages} makeHref={makeHref} />
+        </>
+      )}
     </div>
   );
 }

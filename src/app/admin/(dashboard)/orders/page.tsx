@@ -12,39 +12,45 @@ export default async function OrdersPage() {
     .eq("channel", "online")
     .order("created_at", { ascending: false });
 
+  const statusLabel: Record<string, string> = {
+    completed: "Выполнен",
+    pending: "В обработке",
+    cancelled: "Отменён",
+  };
+
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold text-neutral-900">Online orders</h1>
+      <h1 className="text-xl font-bold text-neutral-900">Онлайн-заказы</h1>
 
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Date</TableHead>
-            <TableHead>Customer</TableHead>
-            <TableHead>Total</TableHead>
-            <TableHead>Status</TableHead>
+            <TableHead>Дата</TableHead>
+            <TableHead>Клиент</TableHead>
+            <TableHead>Сумма</TableHead>
+            <TableHead>Статус</TableHead>
             <TableHead />
           </TableRow>
         </TableHeader>
         <TableBody>
           {orders?.map((o) => (
             <TableRow key={o.id}>
-              <TableCell>{new Date(o.created_at).toLocaleString()}</TableCell>
+              <TableCell>{new Date(o.created_at).toLocaleString("ru-RU")}</TableCell>
               <TableCell>
                 {o.customer_name}
                 <div className="text-xs text-neutral-500">{o.customer_phone}</div>
               </TableCell>
-              <TableCell>{formatMoney(o.total)}</TableCell>
+              <TableCell className="font-medium">{formatMoney(o.total)}</TableCell>
               <TableCell>
                 <Badge
                   variant={o.status === "completed" ? "success" : o.status === "pending" ? "warning" : "destructive"}
                 >
-                  {o.status}
+                  {statusLabel[o.status] ?? o.status}
                 </Badge>
               </TableCell>
               <TableCell>
-                <Link href={`/admin/orders/${o.id}`} className="text-sm hover:underline">
-                  View
+                <Link href={`/admin/orders/${o.id}`} className="text-sm font-medium text-brand-700 hover:underline">
+                  Открыть
                 </Link>
               </TableCell>
             </TableRow>
@@ -52,7 +58,7 @@ export default async function OrdersPage() {
           {!orders?.length && (
             <TableRow>
               <TableCell colSpan={5} className="py-8 text-center text-neutral-500">
-                No online orders yet.
+                Онлайн-заказов пока нет.
               </TableCell>
             </TableRow>
           )}

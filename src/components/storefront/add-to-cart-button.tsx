@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Check, ShoppingCart } from "lucide-react";
 import { useCart } from "@/lib/cart-context";
 import { Button } from "@/components/ui/button";
 
@@ -15,6 +16,8 @@ export function AddToCartButton({
   return (
     <Button
       type="button"
+      size="lg"
+      className="w-full sm:w-auto"
       onClick={() => {
         addItem({
           product_id: product.id,
@@ -24,9 +27,18 @@ export function AddToCartButton({
           image_url: product.image_url,
         });
         setAdded(true);
+        setTimeout(() => setAdded(false), 1500);
       }}
     >
-      {added ? "Added ✓" : "Add to cart"}
+      {added ? (
+        <>
+          <Check className="h-4 w-4" /> Добавлено
+        </>
+      ) : (
+        <>
+          <ShoppingCart className="h-4 w-4" /> В корзину
+        </>
+      )}
     </Button>
   );
 }

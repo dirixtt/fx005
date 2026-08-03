@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { motion } from "motion/react";
 import { useCart } from "@/lib/cart-context";
 import { createClient } from "@/lib/supabase/client";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -26,10 +27,10 @@ export default function CheckoutPage() {
   if (items.length === 0) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-semibold text-neutral-900">Checkout</h1>
-        <p className="text-neutral-500">Your cart is empty.</p>
+        <h1 className="text-2xl font-bold text-neutral-900">Оформление заказа</h1>
+        <p className="text-neutral-500">Корзина пуста.</p>
         <Link href="/" className={buttonVariants()}>
-          Continue shopping
+          В каталог
         </Link>
       </div>
     );
@@ -60,53 +61,53 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-      <div>
-        <h1 className="mb-4 text-2xl font-semibold text-neutral-900">Checkout</h1>
-        <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="grid grid-cols-1 gap-10 md:grid-cols-2">
+      <motion.div initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.25 }}>
+        <h1 className="mb-5 text-2xl font-bold text-neutral-900">Оформление заказа</h1>
+        <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border border-neutral-200 bg-white p-5 shadow-sm">
           <div className="space-y-1.5">
-            <Label htmlFor="name">Full name</Label>
+            <Label htmlFor="name">Имя и фамилия</Label>
             <Input id="name" required value={name} onChange={(e) => setName(e.target.value)} />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="phone">Phone</Label>
+            <Label htmlFor="phone">Телефон</Label>
             <Input id="phone" required value={phone} onChange={(e) => setPhone(e.target.value)} />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="email">Email (optional)</Label>
+            <Label htmlFor="email">Email (необязательно)</Label>
             <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="address">Shipping address (optional)</Label>
+            <Label htmlFor="address">Адрес доставки (необязательно)</Label>
             <Textarea id="address" value={address} onChange={(e) => setAddress(e.target.value)} />
           </div>
           {error && <p className="text-sm text-red-600">{error}</p>}
-          <Button type="submit" className="w-full" disabled={submitting}>
-            {submitting ? "Placing order..." : `Place order · ${formatMoney(subtotal)}`}
+          <Button type="submit" size="lg" className="w-full" disabled={submitting}>
+            {submitting ? "Оформляем..." : `Оформить заказ · ${formatMoney(subtotal)}`}
           </Button>
           <p className="text-xs text-neutral-500">
-            Payment is collected on pickup/delivery — we&apos;ll contact you to confirm.
+            Оплата при получении/доставке — мы свяжемся с вами для подтверждения.
           </p>
         </form>
-      </div>
+      </motion.div>
 
-      <div>
-        <h2 className="mb-2 text-sm font-medium text-neutral-700">Order summary</h2>
-        <div className="divide-y divide-neutral-100 rounded-lg border border-neutral-200 p-4">
+      <motion.div initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.25 }}>
+        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-neutral-500">Ваш заказ</h2>
+        <div className="divide-y divide-neutral-100 rounded-xl border border-neutral-200 bg-white p-5 shadow-sm">
           {items.map((item) => (
             <div key={item.product_id} className="flex justify-between py-2 text-sm">
               <span>
                 {item.name} × {item.quantity}
               </span>
-              <span>{formatMoney(item.sale_price * item.quantity)}</span>
+              <span className="font-medium">{formatMoney(item.sale_price * item.quantity)}</span>
             </div>
           ))}
-          <div className="flex justify-between pt-3 text-base font-semibold">
-            <span>Total</span>
+          <div className="flex justify-between pt-3 text-base font-bold text-neutral-900">
+            <span>Итого</span>
             <span>{formatMoney(subtotal)}</span>
           </div>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

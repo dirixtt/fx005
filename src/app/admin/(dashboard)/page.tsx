@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { AlertTriangle, Clock, Wallet } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { StatCard } from "@/components/admin/stat-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatMoney } from "@/lib/utils";
 
@@ -32,45 +34,44 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold text-neutral-900">Dashboard</h1>
+      <h1 className="text-xl font-bold text-neutral-900">Дашборд</h1>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Card>
-          <CardHeader>
-            <CardTitle>Today&apos;s revenue</CardTitle>
-          </CardHeader>
-          <CardContent className="text-2xl font-semibold">{formatMoney(todayRevenue)}</CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Pending online orders</CardTitle>
-          </CardHeader>
-          <CardContent className="text-2xl font-semibold">
-            <Link href="/admin/orders" className="hover:underline">
-              {pendingOrders ?? 0}
-            </Link>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Low stock items</CardTitle>
-          </CardHeader>
-          <CardContent className="text-2xl font-semibold">{lowStock?.length ?? 0}</CardContent>
-        </Card>
+        <StatCard
+          icon={<Wallet className="h-5 w-5" strokeWidth={2} />}
+          label="Выручка сегодня"
+          value={formatMoney(todayRevenue)}
+          accent="brand"
+        />
+        <StatCard
+          icon={<Clock className="h-5 w-5" strokeWidth={2} />}
+          label="Ожидают обработки"
+          value={pendingOrders ?? 0}
+          href="/admin/orders"
+          accent="blue"
+        />
+        <StatCard
+          icon={<AlertTriangle className="h-5 w-5" strokeWidth={2} />}
+          label="Товары заканчиваются"
+          value={lowStock?.length ?? 0}
+          accent={lowStock && lowStock.length > 0 ? "amber" : "neutral"}
+        />
       </div>
 
       {lowStock && lowStock.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Low stock</CardTitle>
+            <CardTitle>Заканчивается на складе</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             {lowStock.map((p) => (
               <div key={p.id} className="flex items-center justify-between text-sm">
-                <Link href={`/admin/inventory/${p.id}`} className="hover:underline">
+                <Link href={`/admin/inventory/${p.id}`} className="font-medium text-neutral-800 hover:text-brand-700 hover:underline">
                   {p.name}
                 </Link>
-                <span className="text-neutral-500">{p.stock_quantity} left</span>
+                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                  {p.stock_quantity} шт.
+                </span>
               </div>
             ))}
           </CardContent>

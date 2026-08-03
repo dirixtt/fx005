@@ -1,14 +1,24 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { WifiOff, RefreshCw } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { BarcodeCameraScanner } from "@/components/admin/barcode-camera-scanner";
 import { formatMoney } from "@/lib/utils";
+import {
+  isNetworkError,
+  loadPendingSales,
+  queueSale,
+  removePendingSale,
+  markPendingSaleError,
+  type PendingSale,
+} from "@/lib/pos-offline-queue";
 
 type Product = {
   id: string;
@@ -38,8 +48,64 @@ export function PosClient({ products, customers }: { products: Product[]; custom
   const [error, setError] = useState<string | null>(null);
   const [lastSaleId, setLastSaleId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [pendingSales, setPendingSales] = useState<PendingSale[]>([]);
+  const [online, setOnline] = useState(true);
+  const [syncing, setSyncing] = useState(false);
 
   const barcodeRef = useRef<HTMLInputElement>(null);
+
+  const syncPendingSales = useCallback(async () => {
+    const queued = loadPendingSales();
+    if (queued.length === 0) return;
+    setSyncing(true);
+
+    for (const sale of queued) {
+      const { error: syncError } = await supabase.rpc("create_pos_sale", {
+        p_items: sale.items,
+        p_payment_method: sale.payment_method,
+        p_customer_id: sale.customer_id || undefined,
+      });
+
+      if (!syncError) {
+        removePendingSale(sale.id);
+      } else if (isNetworkError(syncError.message)) {
+        break; // still offline, stop and retry later
+      } else {
+        markPendingSaleError(sale.id, syncError.message);
+      }
+    }
+
+    setPendingSales(loadPendingSales());
+    setSyncing(false);
+    router.refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    // One-time hydration from localStorage/navigator, which isn't available during SSR.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPendingSales(loadPendingSales());
+    setOnline(navigator.onLine);
+
+    function handleOnline() {
+      setOnline(true);
+      syncPendingSales();
+    }
+    function handleOffline() {
+      setOnline(false);
+    }
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    if (navigator.onLine) syncPendingSales();
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const searchResults = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -99,17 +165,21 @@ export function PosClient({ products, customers }: { products: Product[]; custom
     setCart((c) => c.filter((i) => i.product_id !== productId));
   }
 
+  function lookupByBarcode(code: string) {
+    const product = products.find((p) => p.barcode === code);
+    if (!product) {
+      setError(`Товар со штрихкодом "${code}" не найден`);
+      return;
+    }
+    addToCart(product);
+  }
+
   function handleBarcodeSubmit(e: React.FormEvent) {
     e.preventDefault();
     const code = barcode.trim();
     setBarcode("");
     if (!code) return;
-    const product = products.find((p) => p.barcode === code);
-    if (!product) {
-      setError(`No product found for barcode "${code}"`);
-      return;
-    }
-    addToCart(product);
+    lookupByBarcode(code);
   }
 
   const subtotal = cart.reduce((sum, i) => sum + i.sale_price * i.quantity, 0);
@@ -119,8 +189,20 @@ export function PosClient({ products, customers }: { products: Product[]; custom
     setSubmitting(true);
     setError(null);
 
+    const items = cart.map((i) => ({ product_id: i.product_id, quantity: i.quantity }));
+
+    if (!navigator.onLine) {
+      queueSale({ items, payment_method: paymentMethod, customer_id: customerId || undefined });
+      setPendingSales(loadPendingSales());
+      setSubmitting(false);
+      setCart([]);
+      setLastSaleId(null);
+      barcodeRef.current?.focus();
+      return;
+    }
+
     const { data, error } = await supabase.rpc("create_pos_sale", {
-      p_items: cart.map((i) => ({ product_id: i.product_id, quantity: i.quantity })),
+      p_items: items,
       p_payment_method: paymentMethod,
       p_customer_id: customerId || undefined,
     });
@@ -128,6 +210,13 @@ export function PosClient({ products, customers }: { products: Product[]; custom
     setSubmitting(false);
 
     if (error) {
+      if (isNetworkError(error.message)) {
+        queueSale({ items, payment_method: paymentMethod, customer_id: customerId || undefined });
+        setPendingSales(loadPendingSales());
+        setCart([]);
+        barcodeRef.current?.focus();
+        return;
+      }
       setError(error.message);
       return;
     }
@@ -141,29 +230,47 @@ export function PosClient({ products, customers }: { products: Product[]; custom
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
       <div className="space-y-4 lg:col-span-2">
-        <h1 className="text-xl font-semibold text-neutral-900">Point of Sale</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-bold text-neutral-900">Касса</h1>
+          {(!online || pendingSales.length > 0) && (
+            <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-sm text-amber-800">
+              <WifiOff className="h-4 w-4" />
+              <span>
+                {!online ? "Нет связи" : "Есть неотправленные продажи"}
+                {pendingSales.length > 0 && ` · ${pendingSales.length} в очереди`}
+              </span>
+              {online && pendingSales.length > 0 && (
+                <Button type="button" variant="ghost" size="sm" disabled={syncing} onClick={syncPendingSales}>
+                  <RefreshCw className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`} /> Отправить
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
 
         <Card>
           <CardContent className="space-y-4 pt-4">
             <form onSubmit={handleBarcodeSubmit} className="space-y-1.5">
-              <Label htmlFor="barcode">Scan barcode</Label>
+              <Label htmlFor="barcode">Сканировать штрихкод</Label>
               <Input
                 id="barcode"
                 ref={barcodeRef}
                 autoFocus
                 value={barcode}
                 onChange={(e) => setBarcode(e.target.value)}
-                placeholder="Scan or type barcode, then Enter"
+                placeholder="Сканером или вручную, затем Enter"
               />
             </form>
 
+            <BarcodeCameraScanner onScan={lookupByBarcode} />
+
             <div className="space-y-1.5">
-              <Label htmlFor="search">Search products</Label>
+              <Label htmlFor="search">Поиск товаров</Label>
               <Input
                 id="search"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search by name, SKU, or barcode"
+                placeholder="По названию, артикулу или штрихкоду"
               />
               {searchResults.length > 0 && (
                 <div className="mt-1 divide-y divide-neutral-100 rounded-md border border-neutral-200 bg-white">
@@ -179,7 +286,7 @@ export function PosClient({ products, customers }: { products: Product[]; custom
                     >
                       <span>{p.name}</span>
                       <span className="text-neutral-500">
-                        {formatMoney(p.sale_price)} · {availableStock[p.id] ?? 0} in stock
+                        {formatMoney(p.sale_price)} · остаток {availableStock[p.id] ?? 0}
                       </span>
                     </button>
                   ))}
@@ -191,10 +298,10 @@ export function PosClient({ products, customers }: { products: Product[]; custom
 
         <Card>
           <CardHeader>
-            <CardTitle>Cart</CardTitle>
+            <CardTitle>Корзина</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {cart.length === 0 && <p className="text-sm text-neutral-500">Cart is empty.</p>}
+            {cart.length === 0 && <p className="text-sm text-neutral-500">Корзина пуста.</p>}
             {cart.map((item) => (
               <div key={item.product_id} className="flex items-center justify-between gap-3 text-sm">
                 <span className="flex-1 font-medium">{item.name}</span>
@@ -210,24 +317,46 @@ export function PosClient({ products, customers }: { products: Product[]; custom
                 </div>
                 <span className="w-20 text-right">{formatMoney(item.sale_price * item.quantity)}</span>
                 <Button type="button" variant="ghost" size="sm" onClick={() => removeItem(item.product_id)}>
-                  Remove
+                  Удалить
                 </Button>
               </div>
             ))}
           </CardContent>
         </Card>
+
+        {pendingSales.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Неотправленные продажи ({pendingSales.length})</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {pendingSales.map((s) => (
+                <div key={s.id} className="flex items-center justify-between text-sm">
+                  <span className="text-neutral-600">
+                    {new Date(s.created_at).toLocaleTimeString("ru-RU")} · {s.items.length} поз.
+                  </span>
+                  {s.error ? (
+                    <span className="text-xs text-red-600">{s.error}</span>
+                  ) : (
+                    <span className="text-xs text-amber-600">ждёт связи</span>
+                  )}
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       <div className="space-y-4">
         <Card>
           <CardHeader>
-            <CardTitle>Checkout</CardTitle>
+            <CardTitle>Оформление</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="customer">Customer (optional)</Label>
+              <Label htmlFor="customer">Клиент (необязательно)</Label>
               <Select id="customer" value={customerId} onChange={(e) => setCustomerId(e.target.value)}>
-                <option value="">Walk-in customer</option>
+                <option value="">Без клиента</option>
                 {customers.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.full_name} {c.phone ? `(${c.phone})` : ""}
@@ -237,26 +366,26 @@ export function PosClient({ products, customers }: { products: Product[]; custom
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="payment">Payment method</Label>
+              <Label htmlFor="payment">Способ оплаты</Label>
               <Select
                 id="payment"
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value as typeof paymentMethod)}
               >
-                <option value="cash">Cash</option>
-                <option value="card">Card</option>
-                <option value="other">Other</option>
+                <option value="cash">Наличные</option>
+                <option value="card">Карта</option>
+                <option value="other">Другое</option>
               </Select>
             </div>
 
             <div className="flex items-center justify-between border-t border-neutral-200 pt-3 text-base font-semibold">
-              <span>Total</span>
+              <span>Итого</span>
               <span>{formatMoney(subtotal)}</span>
             </div>
 
             {error && <p className="text-sm text-red-600">{error}</p>}
             {lastSaleId && (
-              <p className="text-sm text-green-700">Sale completed (#{lastSaleId.slice(0, 8)}).</p>
+              <p className="text-sm text-green-700">Продажа оформлена (#{lastSaleId.slice(0, 8)}).</p>
             )}
 
             <Button
@@ -265,7 +394,7 @@ export function PosClient({ products, customers }: { products: Product[]; custom
               disabled={cart.length === 0 || submitting}
               onClick={completeSale}
             >
-              {submitting ? "Processing..." : "Complete sale"}
+              {submitting ? "Обработка..." : "Оформить продажу"}
             </Button>
           </CardContent>
         </Card>

@@ -2,6 +2,16 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function updateSession(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  const isAdminRoute = pathname.startsWith("/admin");
+
+  // The public storefront never needs the session, so skip the Supabase Auth
+  // round-trip entirely there — it was adding auth-server latency to every
+  // product/cart/checkout page view.
+  if (!isAdminRoute) {
+    return NextResponse.next({ request });
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -27,11 +37,9 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { pathname } = request.nextUrl;
   const isLoginPage = pathname === "/admin/login";
-  const isAdminRoute = pathname.startsWith("/admin");
 
-  if (isAdminRoute && !isLoginPage && !user) {
+  if (!isLoginPage && !user) {
     const url = request.nextUrl.clone();
     url.pathname = "/admin/login";
     return NextResponse.redirect(url);

@@ -19,6 +19,7 @@ function parseForm(formData: FormData) {
     sale_price: formData.get("sale_price"),
     stock_quantity: formData.get("stock_quantity"),
     show_on_storefront: formData.get("show_on_storefront") === "on",
+    image_url: formData.get("image_url") || undefined,
   });
 }
 
@@ -42,6 +43,7 @@ export async function createProduct(_prevState: ActionState, formData: FormData)
     sale_price: parsed.data.sale_price,
     stock_quantity: parsed.data.stock_quantity,
     show_on_storefront: parsed.data.show_on_storefront ?? false,
+    image_url: parsed.data.image_url || null,
     slug,
   });
 
@@ -77,6 +79,7 @@ export async function updateProduct(
       sale_price: parsed.data.sale_price,
       stock_quantity: parsed.data.stock_quantity,
       show_on_storefront: parsed.data.show_on_storefront ?? false,
+      image_url: parsed.data.image_url || null,
       updated_at: new Date().toISOString(),
     })
     .eq("id", id);

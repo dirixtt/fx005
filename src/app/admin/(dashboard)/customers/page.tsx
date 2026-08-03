@@ -12,17 +12,17 @@ export default async function CustomersPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold text-neutral-900">Customers</h1>
+      <h1 className="text-xl font-bold text-neutral-900">Клиенты</h1>
 
-      <div className="rounded-lg border border-neutral-200 bg-white p-4">
+      <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
         <AddCustomerForm />
       </div>
 
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead>Phone</TableHead>
+            <TableHead>Имя</TableHead>
+            <TableHead>Телефон</TableHead>
             <TableHead>Email</TableHead>
           </TableRow>
         </TableHeader>
@@ -30,7 +30,7 @@ export default async function CustomersPage() {
           {customers?.map((c) => (
             <TableRow key={c.id}>
               <TableCell className="font-medium">
-                <Link href={`/admin/customers/${c.id}`} className="hover:underline">
+                <Link href={`/admin/customers/${c.id}`} className="hover:text-brand-700 hover:underline">
                   {c.full_name}
                 </Link>
               </TableCell>
@@ -41,7 +41,7 @@ export default async function CustomersPage() {
           {!customers?.length && (
             <TableRow>
               <TableCell colSpan={3} className="py-8 text-center text-neutral-500">
-                No customers yet.
+                Клиентов пока нет.
               </TableCell>
             </TableRow>
           )}

@@ -29,60 +29,60 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/admin/customers" className="text-sm text-neutral-500 hover:underline">
-          ← Back to customers
+        <Link href="/admin/customers" className="text-sm text-neutral-500 hover:text-brand-700 hover:underline">
+          ← Назад к клиентам
         </Link>
-        <h1 className="mt-1 text-xl font-semibold text-neutral-900">{customer.full_name}</h1>
+        <h1 className="mt-1 text-xl font-bold text-neutral-900">{customer.full_name}</h1>
         <p className="text-sm text-neutral-500">
-          {customer.phone ?? "No phone"} · {customer.email ?? "No email"}
+          {customer.phone ?? "Нет телефона"} · {customer.email ?? "Нет email"}
         </p>
       </div>
 
       <Card>
         <CardContent className="flex gap-8 pt-4">
           <div>
-            <p className="text-xs uppercase tracking-wide text-neutral-500">Total spent</p>
-            <p className="text-lg font-semibold">{formatMoney(totalSpent)}</p>
+            <p className="text-xs uppercase tracking-wide text-neutral-500">Всего потрачено</p>
+            <p className="text-lg font-bold text-brand-700">{formatMoney(totalSpent)}</p>
           </div>
           <div>
-            <p className="text-xs uppercase tracking-wide text-neutral-500">Orders</p>
-            <p className="text-lg font-semibold">{sales?.length ?? 0}</p>
+            <p className="text-xs uppercase tracking-wide text-neutral-500">Заказов</p>
+            <p className="text-lg font-bold text-neutral-900">{sales?.length ?? 0}</p>
           </div>
         </CardContent>
       </Card>
 
       <div>
-        <h2 className="mb-2 text-sm font-medium text-neutral-700">Purchase history</h2>
+        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-neutral-500">История покупок</h2>
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Date</TableHead>
-              <TableHead>Channel</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Total</TableHead>
+              <TableHead>Дата</TableHead>
+              <TableHead>Канал</TableHead>
+              <TableHead>Статус</TableHead>
+              <TableHead>Сумма</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {sales?.map((s) => (
               <TableRow key={s.id}>
-                <TableCell>{new Date(s.created_at).toLocaleString()}</TableCell>
-                <TableCell className="capitalize">{s.channel}</TableCell>
+                <TableCell>{new Date(s.created_at).toLocaleString("ru-RU")}</TableCell>
+                <TableCell>{s.channel === "pos" ? "Касса" : "Онлайн"}</TableCell>
                 <TableCell>
                   <Badge
                     variant={
                       s.status === "completed" ? "success" : s.status === "pending" ? "warning" : "destructive"
                     }
                   >
-                    {s.status}
+                    {s.status === "completed" ? "Выполнен" : s.status === "pending" ? "В обработке" : "Отменён"}
                   </Badge>
                 </TableCell>
-                <TableCell>{formatMoney(s.total)}</TableCell>
+                <TableCell className="font-medium">{formatMoney(s.total)}</TableCell>
               </TableRow>
             ))}
             {!sales?.length && (
               <TableRow>
                 <TableCell colSpan={4} className="py-8 text-center text-neutral-500">
-                  No purchases yet.
+                  Покупок пока нет.
                 </TableCell>
               </TableRow>
             )}

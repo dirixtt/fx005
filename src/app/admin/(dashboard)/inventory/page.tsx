@@ -1,33 +1,62 @@
 import Link from "next/link";
+import { PlusCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AddCategoryForm } from "@/components/admin/add-category-form";
-import { archiveProduct, restoreProduct } from "@/lib/actions/products";
-import { formatMoney } from "@/lib/utils";
+import { InventoryFilters } from "@/components/admin/inventory-filters";
+import { InventoryTable } from "@/components/admin/inventory-table";
+import { Pagination } from "@/components/storefront/pagination";
 
-export default async function InventoryPage() {
+const PAGE_SIZE = 30;
+
+export default async function InventoryPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ category?: string; q?: string; page?: string }>;
+}) {
+  const { category, q, page: pageParam } = await searchParams;
+  const page = Math.max(1, Number(pageParam) || 1);
   const supabase = await createClient();
 
-  const [{ data: products }, { data: categories }] = await Promise.all([
-    supabase
-      .from("products")
-      .select("*, categories(name)")
-      .order("created_at", { ascending: false }),
+  let productsQuery = supabase
+    .from("products")
+    .select("*, categories(id, name)", { count: "exact" })
+    .order("created_at", { ascending: false });
+
+  if (category) productsQuery = productsQuery.eq("category_id", category);
+  if (q) productsQuery = productsQuery.ilike("name", `%${q}%`);
+
+  const from = (page - 1) * PAGE_SIZE;
+
+  const [{ data: products, count }, { data: categories }] = await Promise.all([
+    productsQuery.range(from, from + PAGE_SIZE - 1),
     supabase.from("categories").select("*").order("name"),
   ]);
+
+  const totalPages = Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE));
+  const makeHref = (p: number) => {
+    const params = new URLSearchParams();
+    if (category) params.set("category", category);
+    if (q) params.set("q", q);
+    if (p > 1) params.set("page", String(p));
+    const qs = params.toString();
+    return qs ? `/admin/inventory?${qs}` : "/admin/inventory";
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-neutral-900">Inventory</h1>
+        <div>
+          <h1 className="text-xl font-bold text-neutral-900">Склад</h1>
+          <p className="text-sm text-neutral-500">{count ?? 0} товаров всего</p>
+        </div>
         <Link href="/admin/inventory/new" className={buttonVariants()}>
-          Add product
+          <PlusCircle className="h-4 w-4" /> Добавить товар
         </Link>
       </div>
 
-      <div className="rounded-lg border border-neutral-200 bg-white p-4">
+      <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
         <AddCategoryForm />
         {categories && categories.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-1.5">
@@ -40,63 +69,11 @@ export default async function InventoryPage() {
         )}
       </div>
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead>Category</TableHead>
-            <TableHead>Barcode</TableHead>
-            <TableHead>Cost</TableHead>
-            <TableHead>Price</TableHead>
-            <TableHead>Stock</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead />
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {products?.map((p) => (
-            <TableRow key={p.id}>
-              <TableCell className="font-medium">
-                <Link href={`/admin/inventory/${p.id}`} className="hover:underline">
-                  {p.name}
-                </Link>
-              </TableCell>
-              <TableCell>{p.categories?.name ?? "—"}</TableCell>
-              <TableCell>{p.barcode ?? "—"}</TableCell>
-              <TableCell>{formatMoney(p.cost_price)}</TableCell>
-              <TableCell>{formatMoney(p.sale_price)}</TableCell>
-              <TableCell>
-                {p.stock_quantity <= 5 ? (
-                  <Badge variant="warning">{p.stock_quantity} low</Badge>
-                ) : (
-                  p.stock_quantity
-                )}
-              </TableCell>
-              <TableCell>
-                {p.is_active ? (
-                  <Badge variant="success">Active</Badge>
-                ) : (
-                  <Badge variant="secondary">Archived</Badge>
-                )}
-              </TableCell>
-              <TableCell>
-                <form action={p.is_active ? archiveProduct.bind(null, p.id) : restoreProduct.bind(null, p.id)}>
-                  <Button type="submit" variant="ghost" size="sm">
-                    {p.is_active ? "Archive" : "Restore"}
-                  </Button>
-                </form>
-              </TableCell>
-            </TableRow>
-          ))}
-          {!products?.length && (
-            <TableRow>
-              <TableCell colSpan={8} className="py-8 text-center text-neutral-500">
-                No products yet. Add your first product to get started.
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
+      <InventoryFilters categories={categories ?? []} />
+
+      <InventoryTable products={products ?? []} />
+
+      <Pagination page={page} totalPages={totalPages} makeHref={makeHref} />
     </div>
   );
 }

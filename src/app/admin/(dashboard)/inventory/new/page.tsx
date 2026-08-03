@@ -10,10 +10,10 @@ export default async function NewProductPage() {
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/admin/inventory" className="text-sm text-neutral-500 hover:underline">
-          ← Back to inventory
+        <Link href="/admin/inventory" className="text-sm text-neutral-500 hover:text-brand-700 hover:underline">
+          ← Назад к складу
         </Link>
-        <h1 className="mt-1 text-xl font-semibold text-neutral-900">Add product</h1>
+        <h1 className="mt-1 text-xl font-bold text-neutral-900">Добавить товар</h1>
       </div>
       <ProductForm action={createProduct} categories={categories ?? []} />
     </div>

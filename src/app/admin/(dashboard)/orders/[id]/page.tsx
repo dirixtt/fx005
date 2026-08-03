@@ -28,17 +28,17 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/admin/orders" className="text-sm text-neutral-500 hover:underline">
-          ← Back to orders
+        <Link href="/admin/orders" className="text-sm text-neutral-500 hover:text-brand-700 hover:underline">
+          ← Назад к заказам
         </Link>
         <div className="mt-1 flex items-center gap-3">
-          <h1 className="text-xl font-semibold text-neutral-900">Order #{order.id.slice(0, 8)}</h1>
+          <h1 className="text-xl font-bold text-neutral-900">Заказ #{order.id.slice(0, 8)}</h1>
           <Badge
             variant={
               order.status === "completed" ? "success" : order.status === "pending" ? "warning" : "destructive"
             }
           >
-            {order.status}
+            {order.status === "completed" ? "Выполнен" : order.status === "pending" ? "В обработке" : "Отменён"}
           </Badge>
         </div>
       </div>
@@ -46,20 +46,20 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
       <Card>
         <CardContent className="grid grid-cols-2 gap-4 pt-4 text-sm">
           <div>
-            <p className="text-neutral-500">Customer</p>
+            <p className="text-neutral-500">Клиент</p>
             <p className="font-medium">{order.customer_name}</p>
           </div>
           <div>
-            <p className="text-neutral-500">Phone</p>
+            <p className="text-neutral-500">Телефон</p>
             <p className="font-medium">{order.customer_phone}</p>
           </div>
           <div>
-            <p className="text-neutral-500">Shipping address</p>
+            <p className="text-neutral-500">Адрес доставки</p>
             <p className="font-medium">{order.shipping_address ?? "—"}</p>
           </div>
           <div>
-            <p className="text-neutral-500">Placed</p>
-            <p className="font-medium">{new Date(order.created_at).toLocaleString()}</p>
+            <p className="text-neutral-500">Оформлен</p>
+            <p className="font-medium">{new Date(order.created_at).toLocaleString("ru-RU")}</p>
           </div>
         </CardContent>
       </Card>
@@ -67,10 +67,10 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Product</TableHead>
-            <TableHead>Qty</TableHead>
-            <TableHead>Unit price</TableHead>
-            <TableHead>Line total</TableHead>
+            <TableHead>Товар</TableHead>
+            <TableHead>Кол-во</TableHead>
+            <TableHead>Цена за шт.</TableHead>
+            <TableHead>Сумма</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -85,8 +85,8 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
         </TableBody>
       </Table>
 
-      <div className="flex items-center justify-between border-t border-neutral-200 pt-3 text-base font-semibold">
-        <span>Total</span>
+      <div className="flex items-center justify-between border-t border-neutral-200 pt-3 text-base font-bold text-neutral-900">
+        <span>Итого</span>
         <span>{formatMoney(order.total)}</span>
       </div>
 
@@ -95,7 +95,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           <OrderFulfillForm action={boundFulfill} />
           <form action={boundCancel}>
             <Button type="submit" variant="destructive">
-              Cancel order & restock
+              Отменить заказ и вернуть на склад
             </Button>
           </form>
         </div>
