@@ -91,7 +91,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
       </div>
 
       {order.status === "pending" && (
-        <div className="flex items-end justify-between gap-4">
+        <div className="flex flex-wrap items-end justify-between gap-4">
           <OrderFulfillForm action={boundFulfill} />
           <form action={boundCancel}>
             <Button type="submit" variant="destructive">

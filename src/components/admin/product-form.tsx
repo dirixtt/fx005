@@ -33,7 +33,7 @@ export function ProductForm({
         <Input id="name" name="name" required defaultValue={product?.name} />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor="sku">Артикул (SKU)</Label>
           <Input id="sku" name="sku" defaultValue={product?.sku ?? ""} />
@@ -56,7 +56,7 @@ export function ProductForm({
         </Select>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div className="space-y-1.5">
           <Label htmlFor="cost_price">Себестоимость</Label>
           <Input

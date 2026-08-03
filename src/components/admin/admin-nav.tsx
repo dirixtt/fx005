@@ -22,7 +22,7 @@ const navItems = [
   { href: "/admin/reports", label: "Отчёты", icon: BarChart3 },
 ];
 
-export function AdminNav() {
+export function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
 
   return (
@@ -34,6 +34,7 @@ export function AdminNav() {
           <Link
             key={item.href}
             href={item.href}
+            onClick={onNavigate}
             className={cn(
               "relative flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
               isActive ? "text-white" : "text-neutral-400 hover:bg-white/5 hover:text-white",

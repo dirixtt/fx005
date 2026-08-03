@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { WifiOff, RefreshCw } from "lucide-react";
+import { WifiOff, RefreshCw, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -230,11 +230,11 @@ export function PosClient({ products, customers }: { products: Product[]; custom
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
       <div className="space-y-4 lg:col-span-2">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <h1 className="text-xl font-bold text-neutral-900">Касса</h1>
           {(!online || pendingSales.length > 0) && (
-            <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-sm text-amber-800">
-              <WifiOff className="h-4 w-4" />
+            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-sm text-amber-800">
+              <WifiOff className="h-4 w-4 shrink-0" />
               <span>
                 {!online ? "Нет связи" : "Есть неотправленные продажи"}
                 {pendingSales.length > 0 && ` · ${pendingSales.length} в очереди`}
@@ -282,10 +282,10 @@ export function PosClient({ products, customers }: { products: Product[]; custom
                         addToCart(p);
                         setSearch("");
                       }}
-                      className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-neutral-50"
+                      className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-neutral-50"
                     >
-                      <span>{p.name}</span>
-                      <span className="text-neutral-500">
+                      <span className="min-w-0 truncate">{p.name}</span>
+                      <span className="shrink-0 text-neutral-500">
                         {formatMoney(p.sale_price)} · остаток {availableStock[p.id] ?? 0}
                       </span>
                     </button>
@@ -303,22 +303,34 @@ export function PosClient({ products, customers }: { products: Product[]; custom
           <CardContent className="space-y-3">
             {cart.length === 0 && <p className="text-sm text-neutral-500">Корзина пуста.</p>}
             {cart.map((item) => (
-              <div key={item.product_id} className="flex items-center justify-between gap-3 text-sm">
-                <span className="flex-1 font-medium">{item.name}</span>
-                <span className="text-neutral-500">{formatMoney(item.sale_price)}</span>
+              <div
+                key={item.product_id}
+                className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-neutral-100 pb-2 text-sm last:border-0 last:pb-0"
+              >
+                <span className="min-w-0 flex-1 truncate font-medium">{item.name}</span>
                 <div className="flex items-center gap-2">
-                  <Button type="button" variant="outline" size="sm" onClick={() => changeQuantity(item.product_id, -1)}>
-                    -
-                  </Button>
-                  <span className="w-6 text-center">{item.quantity}</span>
-                  <Button type="button" variant="outline" size="sm" onClick={() => changeQuantity(item.product_id, 1)}>
-                    +
+                  <span className="text-neutral-500">{formatMoney(item.sale_price)}</span>
+                  <div className="flex items-center gap-1">
+                    <Button type="button" variant="outline" size="sm" onClick={() => changeQuantity(item.product_id, -1)}>
+                      -
+                    </Button>
+                    <span className="w-6 text-center">{item.quantity}</span>
+                    <Button type="button" variant="outline" size="sm" onClick={() => changeQuantity(item.product_id, 1)}>
+                      +
+                    </Button>
+                  </div>
+                  <span className="w-16 text-right font-medium">{formatMoney(item.sale_price * item.quantity)}</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="text-neutral-400 hover:text-red-600"
+                    onClick={() => removeItem(item.product_id)}
+                    aria-label="Удалить"
+                  >
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
-                <span className="w-20 text-right">{formatMoney(item.sale_price * item.quantity)}</span>
-                <Button type="button" variant="ghost" size="sm" onClick={() => removeItem(item.product_id)}>
-                  Удалить
-                </Button>
               </div>
             ))}
           </CardContent>

@@ -19,11 +19,11 @@ export function AddCustomerForm() {
   return (
     <form ref={formRef} action={formAction} className="grid grid-cols-1 gap-3 sm:grid-cols-4 sm:items-end">
       <div className="space-y-1.5">
-        <Label htmlFor="full_name">Name</Label>
+        <Label htmlFor="full_name">Имя</Label>
         <Input id="full_name" name="full_name" required />
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor="phone">Phone</Label>
+        <Label htmlFor="phone">Телефон</Label>
         <Input id="phone" name="phone" />
       </div>
       <div className="space-y-1.5">
@@ -31,7 +31,7 @@ export function AddCustomerForm() {
         <Input id="email" name="email" type="email" />
       </div>
       <Button type="submit" disabled={pending}>
-        Add customer
+        Добавить клиента
       </Button>
       {state?.error && <p className="sm:col-span-4 text-sm text-red-600">{state.error}</p>}
     </form>

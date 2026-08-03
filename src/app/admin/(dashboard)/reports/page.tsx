@@ -25,7 +25,7 @@ export default async function ReportsPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-bold text-neutral-900">Отчёты</h1>
         <a
           href={`/admin/reports/export?from=${from}&to=${to}`}
@@ -35,7 +35,7 @@ export default async function ReportsPage({
         </a>
       </div>
 
-      <form className="flex items-end gap-3">
+      <form className="flex flex-wrap items-end gap-3">
         <div className="space-y-1.5">
           <Label htmlFor="from">С</Label>
           <Input id="from" type="date" name="from" defaultValue={from} />

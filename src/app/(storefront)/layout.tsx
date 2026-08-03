@@ -28,7 +28,7 @@ export default async function StorefrontLayout({ children }: { children: React.R
               <span className="text-lg font-bold tracking-tight text-ink-900">fx005</span>
             </Link>
 
-            <div className="flex-1">
+            <div className="min-w-0 flex-1">
               <StorefrontSearch />
             </div>
 

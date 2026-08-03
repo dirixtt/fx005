@@ -14,17 +14,17 @@ export function OrderFulfillForm({
   const [state, formAction, pending] = useActionState(action, undefined);
 
   return (
-    <form action={formAction} className="flex items-end gap-3">
+    <form action={formAction} className="flex flex-wrap items-end gap-3">
       <div className="space-y-1.5">
-        <Label htmlFor="payment_method">Payment method received</Label>
+        <Label htmlFor="payment_method">Способ оплаты</Label>
         <Select id="payment_method" name="payment_method" defaultValue="cash">
-          <option value="cash">Cash</option>
-          <option value="card">Card</option>
-          <option value="other">Other</option>
+          <option value="cash">Наличные</option>
+          <option value="card">Карта</option>
+          <option value="other">Другое</option>
         </Select>
       </div>
       <Button type="submit" disabled={pending}>
-        {pending ? "Saving..." : "Mark paid & fulfilled"}
+        {pending ? "Сохранение..." : "Отметить оплаченным"}
       </Button>
       {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
     </form>

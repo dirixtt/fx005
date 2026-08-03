@@ -60,7 +60,7 @@ export function LabelsPrintView({ products }: { products: LabelProduct[] }) {
       {products.length === 0 ? (
         <p className="text-neutral-500">Товары не выбраны.</p>
       ) : (
-        <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 print:grid-cols-3 print:gap-2">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 print:grid-cols-3 print:gap-2">
           {products.map((p) => (
             <LabelCard key={p.id} product={p} />
           ))}

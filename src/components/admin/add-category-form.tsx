@@ -16,15 +16,15 @@ export function AddCategoryForm() {
   }, [state]);
 
   return (
-    <form ref={formRef} action={formAction} className="flex items-end gap-2">
+    <form ref={formRef} action={formAction} className="flex flex-wrap items-end gap-2">
       <div className="space-y-1.5">
         <label className="text-sm font-medium text-neutral-700" htmlFor="category-name">
-          New category
+          Новая категория
         </label>
-        <Input id="category-name" name="name" placeholder="e.g. Beverages" className="w-48" />
+        <Input id="category-name" name="name" placeholder="например, Отвёртки" className="w-48" />
       </div>
       <Button type="submit" variant="outline" size="sm" disabled={pending}>
-        Add
+        Добавить
       </Button>
       {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
     </form>
