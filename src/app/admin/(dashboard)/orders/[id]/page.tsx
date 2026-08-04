@@ -2,9 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { OrderCancelForm } from "@/components/admin/order-cancel-form";
 import { OrderFulfillForm } from "@/components/admin/order-fulfill-form";
 import { cancelOrder, fulfillOrder } from "@/lib/actions/orders";
 import { formatMoney } from "@/lib/utils";
@@ -93,11 +93,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
       {order.status === "pending" && (
         <div className="flex flex-wrap items-end justify-between gap-4">
           <OrderFulfillForm action={boundFulfill} />
-          <form action={boundCancel}>
-            <Button type="submit" variant="destructive">
-              Отменить заказ и вернуть на склад
-            </Button>
-          </form>
+          <OrderCancelForm action={boundCancel} />
         </div>
       )}
     </div>

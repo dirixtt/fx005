@@ -1,23 +1,29 @@
 import { NextResponse } from "next/server";
 import * as XLSX from "xlsx";
 import { createClient } from "@/lib/supabase/server";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 
 export async function GET() {
   const supabase = await createClient();
 
-  const [{ data: products }, { data: categories }, { data: customers }, { data: sales }, { data: saleItems }] =
-    await Promise.all([
-      supabase.from("products").select("*, categories(name)").order("created_at"),
-      supabase.from("categories").select("*").order("name"),
-      supabase.from("customers").select("*").order("created_at"),
-      supabase.from("sales").select("*").order("created_at"),
-      supabase.from("sale_items").select("*"),
-    ]);
+  // Every table is paged to exhaustion — this file is the owner's only backup,
+  // so a silently short export would be actively misleading.
+  const [products, categories, customers, sales, saleItems] = await Promise.all([
+    fetchAllRows((from, to) =>
+      supabase.from("products").select("*, categories(name)").order("created_at").range(from, to),
+    ),
+    fetchAllRows((from, to) => supabase.from("categories").select("*").order("name").range(from, to)),
+    fetchAllRows((from, to) =>
+      supabase.from("customers").select("*").order("created_at").range(from, to),
+    ),
+    fetchAllRows((from, to) => supabase.from("sales").select("*").order("created_at").range(from, to)),
+    fetchAllRows((from, to) => supabase.from("sale_items").select("*").order("id").range(from, to)),
+  ]);
 
   const workbook = XLSX.utils.book_new();
 
   const productsSheet = XLSX.utils.json_to_sheet(
-    (products ?? []).map((p) => ({
+    products.map((p) => ({
       Название: p.name,
       Категория: p.categories?.name ?? "",
       SKU: p.sku ?? "",
@@ -38,12 +44,12 @@ export async function GET() {
   XLSX.utils.book_append_sheet(workbook, productsSheet, "Товары");
 
   const categoriesSheet = XLSX.utils.json_to_sheet(
-    (categories ?? []).map((c) => ({ Название: c.name, Создана: c.created_at })),
+    categories.map((c) => ({ Название: c.name, Создана: c.created_at })),
   );
   XLSX.utils.book_append_sheet(workbook, categoriesSheet, "Категории");
 
   const customersSheet = XLSX.utils.json_to_sheet(
-    (customers ?? []).map((c) => ({
+    customers.map((c) => ({
       Имя: c.full_name,
       Телефон: c.phone ?? "",
       Email: c.email ?? "",
@@ -54,7 +60,7 @@ export async function GET() {
   XLSX.utils.book_append_sheet(workbook, customersSheet, "Клиенты");
 
   const salesSheet = XLSX.utils.json_to_sheet(
-    (sales ?? []).map((s) => ({
+    sales.map((s) => ({
       Дата: new Date(s.created_at).toLocaleString("ru-RU"),
       Канал: s.channel === "pos" ? "Касса" : "Онлайн",
       Статус: s.status,
@@ -67,7 +73,7 @@ export async function GET() {
   XLSX.utils.book_append_sheet(workbook, salesSheet, "Продажи");
 
   const saleItemsSheet = XLSX.utils.json_to_sheet(
-    (saleItems ?? []).map((i) => ({
+    saleItems.map((i) => ({
       "ID продажи": i.sale_id,
       Товар: i.product_name,
       "Кол-во": i.quantity,

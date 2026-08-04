@@ -1,8 +1,22 @@
+import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { ProductGrid } from "@/components/storefront/product-grid";
 import { Pagination } from "@/components/storefront/pagination";
 
 const PAGE_SIZE = 24;
+
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}): Promise<Metadata> {
+  const { q } = await searchParams;
+  if (!q) return {};
+  return {
+    title: `Поиск: ${q}`,
+    robots: { index: false, follow: true },
+  };
+}
 
 export default async function StorefrontHomePage({
   searchParams,

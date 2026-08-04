@@ -17,11 +17,8 @@ export default async function ReportsPage({
   const { from, to, fromDate, toDate } = defaultDateRange(params);
 
   const supabase = await createClient();
-  const { sales, revenue, profit, stockValuation, revenueByDay, topProducts } = await getReportData(
-    supabase,
-    fromDate,
-    toDate,
-  );
+  const { sales, revenue, profit, stockValuation, revenueByDay, topProducts, truncated } =
+    await getReportData(supabase, fromDate, toDate);
 
   return (
     <div className="space-y-6">
@@ -48,6 +45,13 @@ export default async function ReportsPage({
           Применить
         </Button>
       </form>
+
+      {truncated && (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          За этот период слишком много продаж — показаны не все. Цифры ниже занижены,
+          выберите диапазон покороче.
+        </p>
+      )}
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <Card>

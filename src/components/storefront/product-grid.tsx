@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { motion } from "motion/react";
 import { PackageX } from "lucide-react";
 import { formatMoney } from "@/lib/utils";
@@ -31,11 +32,12 @@ export function ProductGrid({ products }: { products: Product[] }) {
           >
             <div className="relative flex aspect-square items-center justify-center overflow-hidden bg-neutral-100 text-neutral-300">
               {p.image_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <Image
                   src={p.image_url}
                   alt={p.name}
-                  className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  fill
+                  sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, 25vw"
+                  className="object-cover transition-transform duration-300 group-hover:scale-105"
                 />
               ) : (
                 <PackageX className="h-8 w-8" strokeWidth={1.5} />

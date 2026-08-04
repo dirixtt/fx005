@@ -2,15 +2,30 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Pagination } from "@/components/storefront/pagination";
 import { formatMoney } from "@/lib/utils";
 
-export default async function OrdersPage() {
+const PAGE_SIZE = 30;
+
+export default async function OrdersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  const { page: pageParam } = await searchParams;
+  const page = Math.max(1, Number(pageParam) || 1);
   const supabase = await createClient();
-  const { data: orders } = await supabase
+
+  const from = (page - 1) * PAGE_SIZE;
+  const { data: orders, count } = await supabase
     .from("sales")
-    .select("*")
+    .select("*", { count: "exact" })
     .eq("channel", "online")
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .range(from, from + PAGE_SIZE - 1);
+
+  const totalPages = Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE));
+  const makeHref = (p: number) => (p > 1 ? `/admin/orders?page=${p}` : "/admin/orders");
 
   const statusLabel: Record<string, string> = {
     completed: "Выполнен",
@@ -20,7 +35,10 @@ export default async function OrdersPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-bold text-neutral-900">Онлайн-заказы</h1>
+      <div>
+        <h1 className="text-xl font-bold text-neutral-900">Онлайн-заказы</h1>
+        <p className="text-sm text-neutral-500">{count ?? 0} заказов всего</p>
+      </div>
 
       <Table>
         <TableHeader>
@@ -64,6 +82,8 @@ export default async function OrdersPage() {
           )}
         </TableBody>
       </Table>
+
+      <Pagination page={page} totalPages={totalPages} makeHref={makeHref} />
     </div>
   );
 }

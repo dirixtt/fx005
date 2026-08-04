@@ -12,9 +12,30 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+const siteTitle = "fx005 — инструменты и электротовары";
+const siteDescription =
+  "Магазин инструментов и электротоваров: каталог в наличии, цены, самовывоз и доставка по городу.";
+
 export const metadata: Metadata = {
-  title: "fx005",
-  description: "Online store and admin dashboard",
+  metadataBase: new URL(siteUrl),
+  title: {
+    default: siteTitle,
+    template: "%s · fx005",
+  },
+  description: siteDescription,
+  openGraph: {
+    type: "website",
+    siteName: "fx005",
+    title: siteTitle,
+    description: siteDescription,
+    locale: "ru_RU",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: siteTitle,
+    description: siteDescription,
+  },
 };
 
 export default function RootLayout({
@@ -24,7 +45,7 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang="ru"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>
