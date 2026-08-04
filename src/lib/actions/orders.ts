@@ -39,9 +39,16 @@ export async function fulfillOrder(
   return { error: undefined };
 }
 
-export async function cancelOrder(id: string) {
+export async function cancelOrder(id: string): Promise<ActionState> {
   const supabase = await createClient();
-  await supabase.rpc("cancel_online_order", { p_order_id: id });
+
+  const { error } = await supabase.rpc("cancel_online_order", { p_order_id: id });
+
+  if (error) {
+    return { error: error.message };
+  }
+
   revalidatePath("/admin/orders");
   revalidatePath(`/admin/orders/${id}`);
+  return { error: undefined };
 }

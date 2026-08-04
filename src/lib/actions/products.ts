@@ -30,7 +30,9 @@ export async function createProduct(_prevState: ActionState, formData: FormData)
   }
 
   const supabase = await createClient();
-  const slugBase = slugify(parsed.data.name);
+  // A name of pure punctuation or emoji slugifies to nothing, which would leave
+  // the URL as a bare random suffix — fall back to a readable prefix instead.
+  const slugBase = slugify(parsed.data.name) || "tovar";
   const slug = `${slugBase}-${Math.random().toString(36).slice(2, 7)}`;
 
   const { error } = await supabase.from("products").insert({

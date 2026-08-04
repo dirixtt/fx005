@@ -2,17 +2,35 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { AddCustomerForm } from "@/components/admin/add-customer-form";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Pagination } from "@/components/storefront/pagination";
 
-export default async function CustomersPage() {
+const PAGE_SIZE = 30;
+
+export default async function CustomersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  const { page: pageParam } = await searchParams;
+  const page = Math.max(1, Number(pageParam) || 1);
   const supabase = await createClient();
-  const { data: customers } = await supabase
+
+  const from = (page - 1) * PAGE_SIZE;
+  const { data: customers, count } = await supabase
     .from("customers")
-    .select("*")
-    .order("created_at", { ascending: false });
+    .select("*", { count: "exact" })
+    .order("created_at", { ascending: false })
+    .range(from, from + PAGE_SIZE - 1);
+
+  const totalPages = Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE));
+  const makeHref = (p: number) => (p > 1 ? `/admin/customers?page=${p}` : "/admin/customers");
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-bold text-neutral-900">Клиенты</h1>
+      <div>
+        <h1 className="text-xl font-bold text-neutral-900">Клиенты</h1>
+        <p className="text-sm text-neutral-500">{count ?? 0} клиентов всего</p>
+      </div>
 
       <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
         <AddCustomerForm />
@@ -47,6 +65,8 @@ export default async function CustomersPage() {
           )}
         </TableBody>
       </Table>
+
+      <Pagination page={page} totalPages={totalPages} makeHref={makeHref} />
     </div>
   );
 }

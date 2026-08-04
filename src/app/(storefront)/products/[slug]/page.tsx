@@ -2,6 +2,7 @@ import { cache } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { ChevronLeft, PackageX } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { AddToCartButton } from "@/components/storefront/add-to-cart-button";
@@ -59,7 +60,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
     image: product.image_url ?? undefined,
     offers: {
       "@type": "Offer",
-      priceCurrency: "USD",
+      priceCurrency: "UZS",
       price: product.sale_price,
       availability:
         product.stock_quantity > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
@@ -75,10 +76,17 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
         </Link>
 
         <div className="grid grid-cols-1 gap-10 md:grid-cols-2">
-          <div className="flex aspect-square items-center justify-center overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-100 text-neutral-300">
+          <div className="relative flex aspect-square items-center justify-center overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-100 text-neutral-300">
             {product.image_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={product.image_url} alt={product.name} className="h-full w-full object-cover" />
+              <Image
+                src={product.image_url}
+                alt={product.name}
+                fill
+                sizes="(max-width: 768px) 100vw, 50vw"
+                // Largest element above the fold on this page.
+                priority
+                className="object-cover"
+              />
             ) : (
               <PackageX className="h-16 w-16" strokeWidth={1.25} />
             )}

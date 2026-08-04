@@ -5,12 +5,15 @@ import type { Database } from "@/lib/types/database.types";
 const LOW_STOCK_THRESHOLD = 5;
 
 export async function GET(request: NextRequest) {
+  // Fail closed: without a configured secret this endpoint would be world-callable,
+  // letting anyone spam the owner's Telegram and enumerate low-stock inventory.
   const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret) {
-    const auth = request.headers.get("authorization");
-    if (auth !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  if (!cronSecret) {
+    return NextResponse.json({ error: "CRON_SECRET is not configured" }, { status: 503 });
+  }
+
+  if (request.headers.get("authorization") !== `Bearer ${cronSecret}`) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
