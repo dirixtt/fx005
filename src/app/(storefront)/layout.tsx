@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Wrench } from "lucide-react";
+import { LogoLockup } from "@/components/brand/logo";
 import { createClient } from "@/lib/supabase/server";
 import { CartProvider } from "@/lib/cart-context";
 import { CartLink } from "@/components/storefront/cart-link";
@@ -21,11 +21,8 @@ export default async function StorefrontLayout({ children }: { children: React.R
 
         <header className="sticky top-0 z-40 border-b border-neutral-200 bg-white/90 backdrop-blur">
           <div className="mx-auto flex max-w-6xl items-center gap-4 px-4 py-3.5">
-            <Link href="/" className="flex shrink-0 items-center gap-2">
-              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600 text-white shadow-sm">
-                <Wrench className="h-4.5 w-4.5" strokeWidth={2.5} />
-              </span>
-              <span className="text-lg font-bold tracking-tight text-ink-900">fx005</span>
+            <Link href="/" className="flex shrink-0 items-center" aria-label="FX005 — на главную">
+              <LogoLockup className="text-brandnavy" />
             </Link>
 
             <div className="min-w-0 flex-1">
@@ -62,8 +59,8 @@ export default async function StorefrontLayout({ children }: { children: React.R
 
         <footer className="border-t border-neutral-200 bg-white py-8">
           <div className="mx-auto max-w-6xl px-4 text-sm text-neutral-500">
-            <p className="font-semibold text-neutral-800">fx005</p>
-            <p className="mt-1">Розничный магазин инструментов и электротоваров.</p>
+            <LogoLockup className="text-brandnavy" />
+            <p className="mt-2">Розничный магазин инструментов и электротоваров.</p>
           </div>
         </footer>
       </div>

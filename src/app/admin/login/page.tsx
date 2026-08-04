@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
-import { Wrench } from "lucide-react";
+import { LogoMark } from "@/components/brand/logo";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -88,11 +88,9 @@ export default function LoginPage() {
         className="w-full max-w-sm"
       >
         <div className="mb-6 flex flex-col items-center gap-3 text-center">
-          <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-600 text-white shadow-lg shadow-brand-900/40">
-            <Wrench className="h-6 w-6" strokeWidth={2.5} />
-          </span>
+          <LogoMark className="h-14 w-14 text-white" />
           <div>
-            <p className="text-lg font-bold text-white">fx005</p>
+            <p className="text-lg font-bold text-white">FX005</p>
             <p className="text-xs text-neutral-400">Панель управления магазином</p>
           </div>
         </div>

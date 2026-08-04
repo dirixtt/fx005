@@ -18,6 +18,10 @@
   --color-ink-950: #0c0a09;
   --color-ink-900: #1c1917;
   --color-ink-800: #292524;
+
+  /* Navy from the FX005 mark. Kept separate from the orange accent scale so the
+     logo renders in its own colour without repainting the whole interface. */
+  --color-brandnavy: #1e3a5f;
 }
 
 @theme inline {
@@ -40,6 +44,8 @@
   --color-ink-950: var(--color-ink-950);
   --color-ink-900: var(--color-ink-900);
   --color-ink-800: var(--color-ink-800);
+
+  --color-brandnavy: var(--color-brandnavy);
 }
 
 body {

@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { DatabaseBackup, LogOut, Menu, Wrench, X } from "lucide-react";
+import { DatabaseBackup, LogOut, Menu, X } from "lucide-react";
 import { signOut } from "@/lib/actions/auth";
+import { LogoMark } from "@/components/brand/logo";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { AdminNav } from "@/components/admin/admin-nav";
 import { cn } from "@/lib/utils";
@@ -12,10 +13,8 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <>
       <div className="flex items-center gap-2 px-4 py-4">
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600 text-white">
-          <Wrench className="h-4 w-4" strokeWidth={2.5} />
-        </span>
-        <p className="text-sm font-bold text-white">fx005 админ</p>
+        <LogoMark className="h-8 w-8 shrink-0 text-white" />
+        <p className="text-sm font-bold text-white">FX005 админ</p>
       </div>
       <AdminNav onNavigate={onNavigate} />
       <div className="space-y-1 p-3">
@@ -51,10 +50,8 @@ export function AdminSidebar() {
       {/* Mobile top bar */}
       <div className="sticky top-0 z-30 flex items-center justify-between border-b border-neutral-200 bg-white px-4 py-3 md:hidden">
         <div className="flex items-center gap-2">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600 text-white">
-            <Wrench className="h-4 w-4" strokeWidth={2.5} />
-          </span>
-          <p className="text-sm font-bold text-neutral-900">fx005 админ</p>
+          <LogoMark className="h-8 w-8 shrink-0 text-brandnavy" />
+          <p className="text-sm font-bold text-neutral-900">FX005 админ</p>
         </div>
         <Button type="button" variant="ghost" size="icon" onClick={() => setOpen(true)} aria-label="Открыть меню">
           <Menu className="h-5 w-5" />
