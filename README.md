@@ -50,7 +50,8 @@ Deploy the Next.js app anywhere that supports it (e.g. Vercel), and set the vari
 
 The app itself needs no privileged database credentials — everything runs through Supabase's public anon key plus Row Level Security policies and `SECURITY DEFINER` RPC functions that gate what the public storefront can read/write. Two deployment-only values do matter:
 
-- `NEXT_PUBLIC_SITE_URL` — the canonical origin. Without it `sitemap.xml`, `robots.txt` and Open Graph tags fall back to `localhost:3000`, so search engines get useless URLs.
+- `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` — **required, and required at build time.** `/admin/login` is prerendered to static HTML, which constructs a Supabase client, so a build without these fails on that page rather than producing a broken deployment.
+- `NEXT_PUBLIC_SITE_URL` — the canonical origin, used by `sitemap.xml`, `robots.txt` and Open Graph tags. Optional on Vercel: when unset the app falls back to the project's free `*.vercel.app` production domain, which Vercel injects into every build. Set it only once a custom domain is in play.
 - `CRON_SECRET` — required by `/api/cron/low-stock`. The route refuses to run without it rather than leaving itself world-callable, so the scheduled Telegram alert stays silent until it is set.
 
 ## Notes on the data model
