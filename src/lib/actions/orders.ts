@@ -13,7 +13,7 @@ export async function fulfillOrder(
   const paymentMethod = String(formData.get("payment_method") || "cash");
   const supabase = await createClient();
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("sales")
     .update({
       status: "completed",
@@ -22,10 +22,16 @@ export async function fulfillOrder(
     })
     .eq("id", id)
     .eq("channel", "online")
-    .eq("status", "pending");
+    .eq("status", "pending")
+    .select("id")
+    .maybeSingle();
 
   if (error) {
     return { error: error.message };
+  }
+
+  if (!data) {
+    return { error: "Заказ уже обработан или не найден — обновите страницу." };
   }
 
   revalidatePath("/admin/orders");
