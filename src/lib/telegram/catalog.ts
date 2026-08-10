@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/types/database.types";
 import type { VariantLike } from "@/lib/variants";
+import type { PhotoAttributes, PhotoCategory, PhotoColor } from "@/lib/telegram/vision";
 
 /**
  * Turning what a customer typed into a row in the catalogue.
@@ -180,5 +181,110 @@ export async function resolveProduct(
     if (product) return { status: "resolved", product };
   }
 
+  return { status: "unknown" };
+}
+
+// --- Photo matching ----------------------------------------------------------
+//
+// Vision (vision.ts) hands back a category and colours from a closed
+// vocabulary — never a product name. Everything below turns those fixed tags
+// into the same kind of catalogue search sizesMatch and searchProductIds do for
+// typed words. The vocabulary lives here, in Russian, because that is the
+// language this shop's product names are written in; vision.ts stays language-
+// and catalogue-agnostic on purpose.
+
+const CATEGORY_TERMS: Record<PhotoCategory, string[]> = {
+  jacket: ["куртк", "бомбер"],
+  hoodie: ["худи", "толстовк"],
+  t_shirt: ["футболк"],
+  shirt: ["рубашк"],
+  jeans: ["джинс"],
+  pants: ["брюк", "штан"],
+  dress: ["плать"],
+  skirt: ["юбк"],
+  sneakers: ["кроссовк", "кед"],
+  shoes: ["туфл"],
+  boots: ["ботинк", "сапог"],
+  bag: ["сумк"],
+  hat: ["шапк", "кепк"],
+  // Too vague to search safely — resolveProductByAttributes treats this the
+  // same as no match at all.
+  other: [],
+};
+
+// Stems, not full words, and each colour lists every spelling a Russian
+// adjective takes ("чёрная", "чёрный", "чёрное") — a fixed, hand-checked list
+// rather than a stemming library, because a wrong stem here would silently
+// narrow or widen every future search.
+const COLOR_TERMS: Record<PhotoColor, string[]> = {
+  black: ["черн", "чёрн"],
+  white: ["бел"],
+  red: ["красн"],
+  blue: ["син"],
+  green: ["зелен", "зелён"],
+  yellow: ["желт", "жёлт"],
+  pink: ["розов"],
+  gray: ["сер"],
+  brown: ["коричнев"],
+  beige: ["беж"],
+  orange: ["оранж"],
+  purple: ["фиолет"],
+  // No shop names a product "multicolour" — narrowing by it would only ever
+  // discard candidates that should have stayed.
+  multicolor: [],
+};
+
+type NamedProduct = { id: string; name: string };
+
+async function searchProductsByCategory(supabase: Client, terms: string[]): Promise<NamedProduct[]> {
+  if (terms.length === 0) return [];
+
+  // The terms come from CATEGORY_TERMS, a fixed list this module owns — not from
+  // the customer or the model — so building the `or` filter directly is safe
+  // here in a way it is not for sanitizeSearchTerm's caller.
+  const { data } = await supabase
+    .from("products")
+    .select("id, name")
+    .eq("is_active", true)
+    .or(terms.map((term) => `name.ilike.%${term}%`).join(","))
+    .limit(MAX_MATCHES * 3);
+
+  return data ?? [];
+}
+
+/**
+ * Narrows candidates to ones whose name mentions the colour, when any of them
+ * do. If none do, the colour tag is dropped rather than emptying the result —
+ * a seller who wrote "Куртка зимняя" for a black jacket should not lose the
+ * match just because they left the colour out of the name.
+ */
+export function filterByColorTerms(candidates: NamedProduct[], colorTerms: string[]): NamedProduct[] {
+  if (colorTerms.length === 0) return candidates;
+
+  const matching = candidates.filter((product) => {
+    const name = product.name.toLowerCase();
+    return colorTerms.some((term) => name.includes(term));
+  });
+
+  return matching.length > 0 ? matching : candidates;
+}
+
+/** Turns a photo's visual attributes into a catalogue search. */
+export async function resolveProductByAttributes(
+  supabase: Client,
+  attributes: PhotoAttributes,
+): Promise<ProductResolution> {
+  const categoryTerms = CATEGORY_TERMS[attributes.category];
+  if (categoryTerms.length === 0) return { status: "unknown" };
+
+  const candidates = await searchProductsByCategory(supabase, categoryTerms);
+  if (candidates.length === 0) return { status: "unknown" };
+
+  const colorTerms = attributes.colors.flatMap((color) => COLOR_TERMS[color]);
+  const narrowed = filterByColorTerms(candidates, colorTerms);
+
+  const products = await loadProducts(supabase, narrowed.slice(0, MAX_MATCHES).map((p) => p.id));
+  if (products.length === 1) return { status: "resolved", product: products[0] };
+  if (products.length > 1) return { status: "ambiguous", products };
   return { status: "unknown" };
 }

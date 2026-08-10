@@ -16,6 +16,11 @@ const CAPABILITIES: Array<{ name: keyof Settings; label: string; hint: string }>
   { name: "can_answer_price", label: "Цена", hint: "«сколько стоит», «narxi qancha»" },
   { name: "can_answer_order_status", label: "Статус заказа", hint: "«где мой заказ»" },
   { name: "can_answer_shop_info", label: "Доставка/оплата/часы", hint: "требует заполненных данных ниже" },
+  {
+    name: "can_match_photos",
+    label: "Поиск по фото",
+    hint: "фото без подписи — самая ненадёжная функция, включайте последней",
+  },
   { name: "can_place_orders", label: "Оформление заказа", hint: "списывает остаток и создаёт заявку — включайте, только когда доверяете ответам выше" },
 ];
 

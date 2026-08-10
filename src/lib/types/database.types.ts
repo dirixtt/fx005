@@ -18,6 +18,7 @@ export type Database = {
           can_answer_order_status: boolean
           can_answer_price: boolean
           can_answer_shop_info: boolean
+          can_match_photos: boolean
           can_place_orders: boolean
           enabled: boolean
           extra_instructions: string | null
@@ -32,6 +33,7 @@ export type Database = {
           can_answer_order_status?: boolean
           can_answer_price?: boolean
           can_answer_shop_info?: boolean
+          can_match_photos?: boolean
           can_place_orders?: boolean
           enabled?: boolean
           extra_instructions?: string | null
@@ -46,6 +48,7 @@ export type Database = {
           can_answer_order_status?: boolean
           can_answer_price?: boolean
           can_answer_shop_info?: boolean
+          can_match_photos?: boolean
           can_place_orders?: boolean
           enabled?: boolean
           extra_instructions?: string | null

@@ -15,6 +15,7 @@ export type AssistantSettings = {
   canAnswerOrderStatus: boolean;
   canAnswerShopInfo: boolean;
   canPlaceOrders: boolean;
+  canMatchPhotos: boolean;
   reminderMinutes: number;
   languageMode: "auto" | IntentLanguage;
   signature: string | null;
@@ -35,6 +36,7 @@ export const DEFAULT_SETTINGS: AssistantSettings = {
   canAnswerOrderStatus: true,
   canAnswerShopInfo: true,
   canPlaceOrders: false,
+  canMatchPhotos: false,
   reminderMinutes: 15,
   languageMode: "auto",
   signature: null,
@@ -58,6 +60,7 @@ export async function loadAssistantSettings(
     canAnswerOrderStatus: data.can_answer_order_status,
     canAnswerShopInfo: data.can_answer_shop_info,
     canPlaceOrders: data.can_place_orders,
+    canMatchPhotos: data.can_match_photos,
     reminderMinutes: data.reminder_minutes,
     languageMode: data.language_mode as "auto" | IntentLanguage,
     signature: data.signature,

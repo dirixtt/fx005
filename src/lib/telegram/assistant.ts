@@ -2,16 +2,19 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/types/database.types";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { classifyIntent, type Intent, type IntentLanguage, type ShopInfoTopic } from "@/lib/telegram/intent";
-import { replyToCustomer, notifySeller } from "@/lib/telegram/client";
+import { replyToCustomer, notifySeller, downloadPhoto } from "@/lib/telegram/client";
 import { parseContact } from "@/lib/telegram/contact";
 import {
   availableSizes,
   findVariantBySize,
   resolveProduct,
+  resolveProductByAttributes,
   type CatalogProduct,
+  type ProductResolution,
 } from "@/lib/telegram/catalog";
 import * as t from "@/lib/telegram/templates";
 import { effectiveLanguage, loadAssistantSettings, withSignature, type AssistantSettings } from "@/lib/telegram/settings";
+import { describePhoto } from "@/lib/telegram/vision";
 import { inStock, priceRange, variantLabel } from "@/lib/variants";
 import { formatMoney } from "@/lib/utils";
 
@@ -52,9 +55,12 @@ export type InboundMessage = {
   messageId: string;
   chatId: number;
   businessConnectionId: string | null;
+  /** Empty for a photo sent with no caption — see handleInboundMessage. */
   text: string;
   /** The Telegram account name, used when a customer sends a phone with no name. */
   senderName: string | null;
+  /** The largest available size of an attached photo, if any. */
+  photoFileId: string | null;
 };
 
 export async function handleInboundMessage(message: InboundMessage): Promise<void> {
@@ -87,7 +93,21 @@ export async function handleInboundMessage(message: InboundMessage): Promise<voi
     return;
   }
 
-  const rawIntent = await classifyIntent(message.text, { extraInstructions: settings.extraInstructions });
+  // A photo with no caption has no words for classifyIntent to read, but it is
+  // still exactly a stock question about whatever is in the picture — so it is
+  // treated as one, with everything left for the photo pipeline in dispatch()
+  // to fill in. Text always wins when both are present: a caption is a customer
+  // choosing to say something specific, and classifyIntent should read it.
+  const rawIntent = message.text
+    ? await classifyIntent(message.text, { extraInstructions: settings.extraInstructions })
+    : message.photoFileId && settings.canMatchPhotos
+      ? ({ kind: "check_availability", language: "ru", product: null, size: null, color: null } as const)
+      : null;
+
+  // Neither text nor a photo the bot is allowed to look at — nothing to do,
+  // the same silence a sticker or voice note has always gotten.
+  if (!rawIntent) return;
+
   await supabase
     .from("telegram_messages")
     .update({ intent: rawIntent.kind, intent_data: rawIntent as never })
@@ -147,10 +167,19 @@ async function dispatch(
     return;
   }
 
-  const resolution = await resolveProduct(ctx.supabase, {
+  let resolution = await resolveProduct(ctx.supabase, {
     query: intent.product,
     lastProductId,
   });
+
+  // Words found nothing — if a photo came with this message and the seller has
+  // turned photo matching on, that photo is the only other signal there is.
+  // Falls straight into the same resolved/ambiguous/unknown handling below, so
+  // a photo match is answered exactly like a text match: same templates, same
+  // "remember this product" bookkeeping, no separate code path to keep in sync.
+  if (resolution.status === "unknown" && ctx.message.photoFileId && ctx.settings.canMatchPhotos) {
+    resolution = await resolveFromPhoto(ctx.supabase, ctx.message.photoFileId);
+  }
 
   if (resolution.status === "unknown") {
     // They asked a real question about a product we cannot identify. Answering
@@ -180,6 +209,26 @@ async function dispatch(
       await startOrder(ctx, intent.language, product, intent.size, intent.quantity);
       return;
   }
+}
+
+/**
+ * Downloads a customer's photo, describes it, and searches the catalogue for
+ * it — or returns `unknown` at the first place any of that fails.
+ *
+ * Every failure here is silent by design, same as everywhere else: a photo
+ * that will not download, a vision call that errors out, a category too vague
+ * to search on, a search that finds nothing. None of them are worth telling
+ * the customer "I don't understand your photo" — the seller sees the photo
+ * themselves in /admin/telegram and answers it directly.
+ */
+async function resolveFromPhoto(supabase: Client, fileId: string): Promise<ProductResolution> {
+  const photo = await downloadPhoto(fileId);
+  if (!photo) return { status: "unknown" };
+
+  const attributes = await describePhoto(photo.base64, photo.mediaType);
+  if (!attributes) return { status: "unknown" };
+
+  return resolveProductByAttributes(supabase, attributes);
 }
 
 async function answerAvailability(

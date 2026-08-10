@@ -83,3 +83,40 @@ export function notifySeller(text: string): Promise<SendResult> {
 
   return sendMessage({ chat_id: chatId, text });
 }
+
+export type DownloadedPhoto = { base64: string; mediaType: "image/jpeg" };
+
+/**
+ * Downloads a photo the customer sent, for the vision pipeline (see vision.ts).
+ *
+ * Two calls, because that is how the Bot API works: `getFile` turns a `file_id`
+ * into a `file_path`, which is only then downloadable — the id alone is not a
+ * URL. Telegram photos are JPEG; there is no format negotiation to do.
+ */
+export async function downloadPhoto(fileId: string): Promise<DownloadedPhoto | null> {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  if (!token) return null;
+
+  try {
+    const fileResponse = await fetch(`${API_BASE}/bot${token}/getFile?file_id=${encodeURIComponent(fileId)}`, {
+      signal: AbortSignal.timeout(10_000),
+    });
+    const fileBody = (await fileResponse.json().catch(() => null)) as
+      | { ok?: boolean; result?: { file_path?: string } }
+      | null;
+
+    const filePath = fileBody?.result?.file_path;
+    if (!fileResponse.ok || !fileBody?.ok || !filePath) return null;
+
+    const fileContent = await fetch(`${API_BASE}/file/bot${token}/${filePath}`, {
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!fileContent.ok) return null;
+
+    const bytes = await fileContent.arrayBuffer();
+    return { base64: Buffer.from(bytes).toString("base64"), mediaType: "image/jpeg" };
+  } catch (error) {
+    console.error("[telegram] downloadPhoto failed", error instanceof Error ? error.message : error);
+    return null;
+  }
+}

@@ -35,6 +35,15 @@ export type BusinessConnection = {
   is_enabled: boolean;
 };
 
+/** One resolution of an attached photo. Telegram sends several; the last is largest. */
+export type TelegramPhotoSize = {
+  file_id: string;
+  file_unique_id: string;
+  width: number;
+  height: number;
+  file_size?: number;
+};
+
 export type BusinessMessage = {
   message_id: number;
   business_connection_id?: string;
@@ -43,6 +52,7 @@ export type BusinessMessage = {
   date: number;
   text?: string;
   caption?: string;
+  photo?: TelegramPhotoSize[];
 };
 
 export type TelegramUpdate = {

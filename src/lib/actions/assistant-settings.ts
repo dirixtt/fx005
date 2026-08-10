@@ -34,6 +34,7 @@ export async function updateAssistantSettings(_prevState: ActionState, formData:
       can_answer_order_status: formData.get("can_answer_order_status") === "on",
       can_answer_shop_info: formData.get("can_answer_shop_info") === "on",
       can_place_orders: formData.get("can_place_orders") === "on",
+      can_match_photos: formData.get("can_match_photos") === "on",
       reminder_minutes: reminderMinutes,
       language_mode: languageMode as (typeof LANGUAGE_MODES)[number],
       signature: signature || null,

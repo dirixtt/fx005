@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   availableSizes,
+  filterByColorTerms,
   findVariantBySize,
   sanitizeSearchTerm,
   sizesMatch,
@@ -106,5 +107,27 @@ describe("availableSizes", () => {
 
   it("is empty for a product with no sizes", () => {
     expect(availableSizes([variant({ id: "a", stock_quantity: 4 })])).toEqual([]);
+  });
+});
+
+describe("filterByColorTerms", () => {
+  const candidates = [
+    { id: "a", name: "Бомбер чёрный" },
+    { id: "b", name: "Бомбер белый" },
+    { id: "c", name: "Бомбер зимний" },
+  ];
+
+  it("keeps only candidates whose name mentions the colour", () => {
+    expect(filterByColorTerms(candidates, ["черн", "чёрн"])).toEqual([candidates[0]]);
+  });
+
+  it("falls back to every candidate when the colour matches none of them", () => {
+    // A seller who never put "чёрный" in the product name should not lose the
+    // match entirely — the category alone is still a real answer.
+    expect(filterByColorTerms(candidates, ["фиолет"])).toEqual(candidates);
+  });
+
+  it("is a no-op with no colour terms at all", () => {
+    expect(filterByColorTerms(candidates, [])).toEqual(candidates);
   });
 });

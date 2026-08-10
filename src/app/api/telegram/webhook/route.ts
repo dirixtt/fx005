@@ -129,11 +129,17 @@ async function recordMessage(message: BusinessMessage, update: TelegramUpdate) {
     `[telegram] ${row.direction} chat=${row.chat_id} text=${JSON.stringify(row.text ?? "")}`,
   );
 
-  // Only the customer's side. Running the assistant over the seller's own replies
-  // would burn a model call to answer a question nobody asked.
-  if (row.direction !== "in" || !row.text) return;
+  // Telegram sends several resolutions of the same photo; the last is largest,
+  // which is what the vision pipeline in assistant.ts wants to look at.
+  const photoFileId = message.photo?.at(-1)?.file_id ?? null;
 
-  const text = row.text;
+  // Only the customer's side, and only if there is something to work with. A
+  // sticker or a voice note has neither text nor a photo and stays exactly as
+  // silent as it always has. Running the assistant over the seller's own
+  // replies would burn a model call to answer a question nobody asked.
+  if (row.direction !== "in" || (!row.text && !photoFileId)) return;
+
+  const text = row.text ?? "";
   after(async () => {
     try {
       await handleInboundMessage({
@@ -142,6 +148,7 @@ async function recordMessage(message: BusinessMessage, update: TelegramUpdate) {
         businessConnectionId: businessConnectionId,
         text,
         senderName: message.from?.first_name ?? null,
+        photoFileId,
       });
     } catch (error) {
       // The response went out long ago and the customer is unaffected — they get
