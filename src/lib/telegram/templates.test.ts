@@ -89,3 +89,45 @@ describe("clarifying replies", () => {
     expect(t.whichSizeReply("uz", "Bomber", ["41", "42"])).toContain("41, 42");
   });
 });
+
+describe("order status replies", () => {
+  it("lists each order with its own total and status", () => {
+    const reply = plain(
+      t.orderStatusReply("ru", [
+        { status: "pending", total: 450_000, created_at: "2026-08-01T00:00:00Z", items_summary: "Бомбер 42 × 1" },
+        { status: "completed", total: 300_000, created_at: "2026-07-01T00:00:00Z", items_summary: "Куртка M × 1" },
+      ]),
+    );
+    expect(reply).toContain("450 000");
+    expect(reply).toContain("в обработке");
+    expect(reply).toContain("300 000");
+    expect(reply).toContain("выполнен");
+  });
+
+  it("does not claim an order exists when none was found", () => {
+    // This is the one reply on the "nothing found" path, and it must not read
+    // like a status — there is no order to have a status.
+    const reply = t.noOrdersFoundReply("ru");
+    expect(reply).not.toMatch(/в обработке|выполнен|отменён/);
+  });
+});
+
+describe("shop info replies", () => {
+  it("lists every configured delivery zone with its price", () => {
+    const reply = plain(
+      t.deliveryReply("ru", [
+        { name: "По Ташкенту", price: 20_000, eta_days: "1-2 дня" },
+        { name: "По Узбекистану", price: 35_000, eta_days: null },
+      ]),
+    );
+    expect(reply).toContain("По Ташкенту — 20 000");
+    expect(reply).toContain("1-2 дня");
+    expect(reply).toContain("По Узбекистану — 35 000");
+  });
+
+  it("passes the seller's own text through unchanged", () => {
+    // Payment and hours are the seller's own words, typed once in the dashboard
+    // — there is nothing here for the bot to add or translate.
+    expect(t.shopTextReply("Оплата картой при получении")).toBe("Оплата картой при получении");
+  });
+});

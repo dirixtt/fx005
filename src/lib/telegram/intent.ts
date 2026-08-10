@@ -33,6 +33,9 @@ export type OtherReason =
   /** No API key, network failure, rate limit, timeout. */
   | "unavailable";
 
+/** Which non-catalogue question the customer asked. Decides which template answers it. */
+export type ShopInfoTopic = "delivery" | "payment" | "hours";
+
 export type Intent =
   | {
       kind: "check_availability";
@@ -50,6 +53,8 @@ export type Intent =
       color: string | null;
       quantity: number;
     }
+  | { kind: "check_order_status"; language: IntentLanguage }
+  | { kind: "ask_shop_info"; language: IntentLanguage; topic: ShopInfoTopic }
   | { kind: "other"; language: IntentLanguage; reason: OtherReason; note: string | null };
 
 export function otherIntent(reason: OtherReason, note: string | null = null): Intent {
@@ -163,6 +168,46 @@ export const INTENT_TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: "check_order_status",
+    description:
+      "Call this when the customer is asking about an order they already placed " +
+      "— where it is, whether it shipped, whether it was confirmed. Typical " +
+      "phrasings: 'где мой заказ', 'buyurtmam qayerda', 'когда доставят', 'заказ " +
+      "подтвердили?'. Not for a new purchase — that is place_order.",
+    strict: true,
+    input_schema: {
+      type: "object",
+      properties: { language: LANGUAGE_PROPERTY },
+      required: ["language"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "ask_shop_info",
+    description:
+      "Call this for a question about the shop itself rather than a specific " +
+      "product: delivery cost and areas ('доставка есть?', 'yetkazib berasizmi', " +
+      "'сколько доставка'), how to pay ('как оплата', 'karta orqali to'lasa " +
+      "bo'ladimi'), or when the shop is open ('часы работы', 'necha soatda " +
+      "ishlaysiz'). Pick the single topic that matches best.",
+    strict: true,
+    input_schema: {
+      type: "object",
+      properties: {
+        language: LANGUAGE_PROPERTY,
+        topic: {
+          type: "string",
+          enum: ["delivery", "payment", "hours"],
+          description:
+            "'delivery' for shipping cost, areas or timing; 'payment' for how to " +
+            "pay; 'hours' for when the shop is open or responds.",
+        },
+      },
+      required: ["language", "topic"],
+      additionalProperties: false,
+    },
+  },
+  {
     name: "other",
     description:
       "Call this for everything else: greetings ('салом', 'assalomu alaykum'), " +
@@ -205,7 +250,9 @@ const SYSTEM_PROMPT = `Ты — классификатор сообщений д
 2. Если чего-то в сообщении нет — ставь null. Пустое поле честнее выдуманного.
 3. Сомневаешься между двумя функциями — выбирай ту, что осторожнее: вопрос о покупке это check_availability или ask_price, а не place_order.
 4. Сомневаешься вообще — вызывай other. Сообщение уйдёт живому продавцу. Это всегда лучше, чем ответить наугад.
-5. Приветствие вместе с вопросом («салом, 42 борми») — классифицируй по вопросу, а не по приветствию.`;
+5. Приветствие вместе с вопросом («салом, 42 борми») — классифицируй по вопросу, а не по приветствию.
+6. check_order_status — только про заказ, который уже сделан. Вопрос о новой покупке — это place_order, даже если клиент путает слова.
+7. ask_shop_info — про магазин, а не про конкретный товар: доставка, оплата, часы работы.`;
 
 // --- Parsing ----------------------------------------------------------------
 
@@ -244,6 +291,15 @@ const placeOrderSchema = z.object({
   quantity: z.number().int().positive().nullable().catch(null),
 });
 
+const checkOrderStatusSchema = z.object({
+  language: languageSchema,
+});
+
+const askShopInfoSchema = z.object({
+  language: languageSchema,
+  topic: z.enum(["delivery", "payment", "hours"]),
+});
+
 const otherSchema = z.object({
   language: languageSchema,
   note: nullableStringSchema,
@@ -274,6 +330,16 @@ export function intentFromToolUse(name: string, input: unknown): Intent {
       // "Beraman" without a number means one item; that is the only assumption
       // made anywhere in this file, and it is the one every seller makes too.
       return { kind: "place_order", ...parsed.data, quantity: parsed.data.quantity ?? 1 };
+    }
+    case "check_order_status": {
+      const parsed = checkOrderStatusSchema.safeParse(input);
+      if (!parsed.success) return otherIntent("invalid_arguments");
+      return { kind: "check_order_status", ...parsed.data };
+    }
+    case "ask_shop_info": {
+      const parsed = askShopInfoSchema.safeParse(input);
+      if (!parsed.success) return otherIntent("invalid_arguments");
+      return { kind: "ask_shop_info", ...parsed.data };
     }
     case "other": {
       const parsed = otherSchema.safeParse(input);

@@ -90,6 +90,30 @@ describe("intentFromToolUse", () => {
       reason: "invalid_arguments",
     });
   });
+
+  it("reads a question about an existing order", () => {
+    expect(intentFromToolUse("check_order_status", { language: "ru" })).toEqual({
+      kind: "check_order_status",
+      language: "ru",
+    });
+  });
+
+  it("reads a question about the shop itself, with its topic", () => {
+    expect(intentFromToolUse("ask_shop_info", { language: "uz", topic: "delivery" })).toEqual({
+      kind: "ask_shop_info",
+      language: "uz",
+      topic: "delivery",
+    });
+  });
+
+  it("falls back to 'other' on a shop-info topic outside the enum", () => {
+    // Guards against a future model release inventing its own topic name instead
+    // of picking one of the three the templates actually cover.
+    expect(intentFromToolUse("ask_shop_info", { language: "ru", topic: "returns" })).toMatchObject({
+      kind: "other",
+      reason: "invalid_arguments",
+    });
+  });
 });
 
 describe("classifyIntent guards", () => {
@@ -143,6 +167,8 @@ describe("classifyIntent guards", () => {
       "check_availability",
       "ask_price",
       "place_order",
+      "check_order_status",
+      "ask_shop_info",
       "other",
     ]);
     // Strict mode is what makes intentFromToolUse's happy path the common case
@@ -177,6 +203,13 @@ describe.skipIf(!process.env.ANTHROPIC_API_KEY)("classifyIntent against the mode
     { text: "ассалому алайкум", kind: "other" },
     // A greeting glued to a question must be classified by the question.
     { text: "салом, 42 борми", kind: "check_availability", size: "42" },
+    // Order status and shop info, not to be confused with place_order/ask_price.
+    { text: "где мой заказ", kind: "check_order_status" },
+    { text: "buyurtmam qayerda", kind: "check_order_status" },
+    { text: "сколько доставка", kind: "ask_shop_info" },
+    { text: "yetkazib berasizmi", kind: "ask_shop_info" },
+    { text: "как оплата", kind: "ask_shop_info" },
+    { text: "во сколько вы работаете", kind: "ask_shop_info" },
   ];
 
   it.each(cases)("classifies $text as $kind", async ({ text, kind, size }) => {

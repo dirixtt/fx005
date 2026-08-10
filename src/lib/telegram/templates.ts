@@ -160,3 +160,76 @@ export function orderFailedReply(language: IntentLanguage): string {
     uz: "Buyurtmani rasmiylashtira olmadim — sotuvchi tez orada o'zi yozadi.",
   });
 }
+
+// --- Order status ------------------------------------------------------------
+
+export function askPhoneForStatusReply(language: IntentLanguage): string {
+  return pick(language, {
+    ru: "Напишите номер телефона, на который оформляли заказ — проверю.",
+    uz: "Buyurtma bergan telefon raqamingizni yozing — tekshiraman.",
+  });
+}
+
+export function phoneUnclearForStatusReply(language: IntentLanguage): string {
+  return pick(language, {
+    ru: "Не разобрал номер. Например: +998 90 123 45 67",
+    uz: "Raqamni tushunmadim. Masalan: +998 90 123 45 67",
+  });
+}
+
+const STATUS_LABEL: Record<string, Copy> = {
+  pending: { ru: "в обработке", uz: "ko'rib chiqilmoqda" },
+  completed: { ru: "выполнен", uz: "bajarildi" },
+  cancelled: { ru: "отменён", uz: "bekor qilindi" },
+};
+
+export type OrderStatusRow = {
+  status: string;
+  total: number;
+  created_at: string;
+  items_summary: string | null;
+};
+
+export function orderStatusReply(language: IntentLanguage, orders: OrderStatusRow[]): string {
+  const lines = orders.map((order) => {
+    const status = pick(language, STATUS_LABEL[order.status] ?? STATUS_LABEL.pending);
+    const date = new Date(order.created_at).toLocaleDateString("ru-RU");
+    return `${date} — ${order.items_summary ?? ""} — ${formatMoney(order.total)} — ${status}`;
+  });
+
+  return pick(language, {
+    ru: `Ваши заказы:\n\n${lines.join("\n")}`,
+    uz: `Buyurtmalaringiz:\n\n${lines.join("\n")}`,
+  });
+}
+
+export function noOrdersFoundReply(language: IntentLanguage): string {
+  // Said only after a phone number was actually looked up and matched nothing —
+  // never a guess about whether the number itself was typed correctly.
+  return pick(language, {
+    ru: "По этому номеру заказов не нашёл за последние полгода. Если это ошибка, продавец разберётся.",
+    uz: "Bu raqam bo'yicha oxirgi olti oyda buyurtma topmadim. Agar xato bo'lsa, sotuvchi ko'rib chiqadi.",
+  });
+}
+
+// --- Shop info -----------------------------------------------------------------
+
+export type DeliveryZoneRow = { name: string; price: number; eta_days: string | null };
+
+export function deliveryReply(language: IntentLanguage, zones: DeliveryZoneRow[]): string {
+  const lines = zones.map((zone) => {
+    const eta = zone.eta_days ? ` (${zone.eta_days})` : "";
+    return `${zone.name} — ${formatMoney(zone.price)}${eta}`;
+  });
+
+  return pick(language, {
+    ru: `Доставка:\n${lines.join("\n")}`,
+    uz: `Yetkazib berish:\n${lines.join("\n")}`,
+  });
+}
+
+export function shopTextReply(text: string): string {
+  // Payment and hours are free text the seller wrote themselves in the
+  // dashboard — there is no per-language split to make, so it is sent as-is.
+  return text;
+}

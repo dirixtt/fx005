@@ -57,6 +57,33 @@ export type Database = {
         }
         Relationships: []
       }
+      delivery_zones: {
+        Row: {
+          created_at: string
+          eta_days: string | null
+          id: string
+          name: string
+          price: number
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          eta_days?: string | null
+          id?: string
+          name: string
+          price?: number
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          eta_days?: string | null
+          id?: string
+          name?: string
+          price?: number
+          sort_order?: number
+        }
+        Relationships: []
+      }
       product_variants: {
         Row: {
           barcode: string | null
@@ -274,11 +301,33 @@ export type Database = {
           },
         ]
       }
+      shop_info: {
+        Row: {
+          hours_text: string | null
+          id: boolean
+          payment_text: string | null
+          updated_at: string
+        }
+        Insert: {
+          hours_text?: string | null
+          id?: boolean
+          payment_text?: string | null
+          updated_at?: string
+        }
+        Update: {
+          hours_text?: string | null
+          id?: boolean
+          payment_text?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       telegram_chats: {
         Row: {
           business_connection_id: string | null
           chat_id: number
           created_at: string
+          customer_phone: string | null
           draft: Json | null
           last_product_id: string | null
           last_reminded_at: string | null
@@ -289,6 +338,7 @@ export type Database = {
           business_connection_id?: string | null
           chat_id: number
           created_at?: string
+          customer_phone?: string | null
           draft?: Json | null
           last_product_id?: string | null
           last_reminded_at?: string | null
@@ -299,6 +349,7 @@ export type Database = {
           business_connection_id?: string | null
           chat_id?: number
           created_at?: string
+          customer_phone?: string | null
           draft?: Json | null
           last_product_id?: string | null
           last_reminded_at?: string | null
@@ -435,6 +486,17 @@ export type Database = {
       }
       notify_unanswered: { Args: Record<PropertyKey, never>; Returns: undefined }
       owner_exists: { Args: Record<PropertyKey, never>; Returns: boolean }
+      recent_orders_by_phone: {
+        Args: { p_limit?: number; p_phone: string }
+        Returns: {
+          channel: Database["public"]["Enums"]["sale_channel"]
+          created_at: string
+          id: string
+          items_summary: string
+          status: Database["public"]["Enums"]["sale_status"]
+          total: number
+        }[]
+      }
       unanswered_chats: {
         Args: { p_minutes?: number }
         Returns: {

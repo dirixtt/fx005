@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/types/database.types";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
-import { classifyIntent, type Intent, type IntentLanguage } from "@/lib/telegram/intent";
+import { classifyIntent, type Intent, type IntentLanguage, type ShopInfoTopic } from "@/lib/telegram/intent";
 import { replyToCustomer, notifySeller } from "@/lib/telegram/client";
 import { parseContact } from "@/lib/telegram/contact";
 import {
@@ -36,6 +36,9 @@ type Draft = {
   unit_price: number;
 };
 
+/** What `draft` holds while state = 'awaiting_phone_for_status'. */
+type StatusDraft = { language: IntentLanguage };
+
 export type InboundMessage = {
   /** telegram_messages.id of the row just written for this message. */
   messageId: string;
@@ -51,15 +54,20 @@ export async function handleInboundMessage(message: InboundMessage): Promise<voi
 
   const { data: chat } = await supabase
     .from("telegram_chats")
-    .select("chat_id, state, draft, last_product_id")
+    .select("chat_id, state, draft, last_product_id, customer_phone")
     .eq("chat_id", message.chatId)
     .maybeSingle();
 
-  // A customer who was asked for their phone number is answering that question,
-  // not starting a new one. Classifying "Азиз, +998901234567" would waste a model
-  // call to be told it is `other`, and then the order would be dropped.
+  // A customer who was asked a follow-up question is answering that question, not
+  // starting a new one. Classifying "Азиз, +998901234567" or a bare phone number
+  // would waste a model call to be told it is `other`, and drop the answer.
   if (chat?.state === "awaiting_contact" && chat.draft) {
     await completeOrder(supabase, message, chat.draft as unknown as Draft);
+    return;
+  }
+  if (chat?.state === "awaiting_phone_for_status") {
+    const language = (chat.draft as unknown as StatusDraft | null)?.language ?? "ru";
+    await answerOrderStatusFromText(supabase, message, language, message.text);
     return;
   }
 
@@ -69,7 +77,7 @@ export async function handleInboundMessage(message: InboundMessage): Promise<voi
     .update({ intent: intent.kind, intent_data: intent as never })
     .eq("id", message.messageId);
 
-  await dispatch(supabase, message, intent, chat?.last_product_id ?? null);
+  await dispatch(supabase, message, intent, chat?.last_product_id ?? null, chat?.customer_phone ?? null);
 }
 
 async function dispatch(
@@ -77,11 +85,37 @@ async function dispatch(
   message: InboundMessage,
   intent: Intent,
   lastProductId: string | null,
+  knownPhone: string | null,
 ): Promise<void> {
-  // Greetings, complaints, questions about a previous order, and anything the
-  // classifier was unsure of. The seller handles these; the bot has nothing
-  // useful to add and every attempt would be a guess.
+  // Greetings, complaints, and anything the classifier was unsure of. The seller
+  // handles these; the bot has nothing useful to add and every attempt would be
+  // a guess.
   if (intent.kind === "other") return;
+
+  // These two are about the shop, not a product — resolving a product first
+  // would be wasted work at best and a wrong "which product?" prompt at worst.
+  if (intent.kind === "check_order_status") {
+    if (knownPhone) {
+      await lookupOrderStatus(supabase, message, intent.language, knownPhone);
+    } else {
+      await supabase.from("telegram_chats").upsert(
+        {
+          chat_id: message.chatId,
+          business_connection_id: message.businessConnectionId,
+          state: "awaiting_phone_for_status",
+          draft: { language: intent.language } as never,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "chat_id" },
+      );
+      await reply(supabase, message, t.askPhoneForStatusReply(intent.language));
+    }
+    return;
+  }
+  if (intent.kind === "ask_shop_info") {
+    await answerShopInfo(supabase, message, intent.language, intent.topic);
+    return;
+  }
 
   const resolution = await resolveProduct(supabase, {
     query: intent.product,
@@ -237,6 +271,94 @@ async function startOrder(
     message,
     t.askContactReply(language, product.name, variant.size, variant.sale_price * quantity),
   );
+}
+
+/**
+ * Reads a phone number out of free text and answers with that number's order
+ * history, or asks again if the text had no recognisable number.
+ *
+ * Used both when the customer types a number in response to
+ * `askPhoneForStatusReply` and — indirectly, via `lookupOrderStatus` — when the
+ * phone is already on file and no parsing is needed at all.
+ */
+async function answerOrderStatusFromText(
+  supabase: Client,
+  message: InboundMessage,
+  language: IntentLanguage,
+  text: string,
+): Promise<void> {
+  const phone = parseContact(text).phone;
+  if (!phone) {
+    // State is left as 'awaiting_phone_for_status'. This is the one place a
+    // wrong guess would be actively harmful — reading a stray number as the
+    // phone would tell a stranger about someone else's order.
+    await reply(supabase, message, t.phoneUnclearForStatusReply(language));
+    return;
+  }
+  await lookupOrderStatus(supabase, message, language, phone);
+}
+
+async function lookupOrderStatus(
+  supabase: Client,
+  message: InboundMessage,
+  language: IntentLanguage,
+  phone: string,
+): Promise<void> {
+  const { data: orders, error } = await supabase.rpc("recent_orders_by_phone", { p_phone: phone });
+
+  // Remembered regardless of whether anything was found: a wrong number typed
+  // once should not be re-asked on every later question, and the seller can
+  // always see the raw text in /admin/telegram if it needs correcting.
+  await supabase
+    .from("telegram_chats")
+    .upsert(
+      {
+        chat_id: message.chatId,
+        business_connection_id: message.businessConnectionId,
+        state: "idle",
+        draft: null,
+        customer_phone: phone,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "chat_id" },
+    );
+
+  if (error) {
+    console.error("[assistant] recent_orders_by_phone failed", error.message);
+    return;
+  }
+
+  if (!orders || orders.length === 0) {
+    await reply(supabase, message, t.noOrdersFoundReply(language));
+    return;
+  }
+
+  await reply(supabase, message, t.orderStatusReply(language, orders));
+}
+
+async function answerShopInfo(
+  supabase: Client,
+  message: InboundMessage,
+  language: IntentLanguage,
+  topic: ShopInfoTopic,
+): Promise<void> {
+  if (topic === "delivery") {
+    const { data: zones } = await supabase
+      .from("delivery_zones")
+      .select("name, price, eta_days")
+      .order("sort_order");
+
+    // No zones configured — the honest reading is that this has not been set up
+    // yet, not that delivery costs nothing.
+    if (!zones || zones.length === 0) return;
+    await reply(supabase, message, t.deliveryReply(language, zones));
+    return;
+  }
+
+  const { data: info } = await supabase.from("shop_info").select("payment_text, hours_text").maybeSingle();
+  const text = topic === "payment" ? info?.payment_text : info?.hours_text;
+  if (!text) return;
+  await reply(supabase, message, t.shopTextReply(text));
 }
 
 async function completeOrder(
