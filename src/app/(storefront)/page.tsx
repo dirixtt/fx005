@@ -29,7 +29,10 @@ export default async function StorefrontHomePage({
 
   let query = supabase
     .from("products")
-    .select("id, name, slug, sale_price, image_url, stock_quantity, category_id", { count: "exact" })
+    .select(
+      "id, name, slug, image_url, category_id, product_variants(id, size, color, sale_price, stock_quantity)",
+      { count: "exact" },
+    )
     .eq("is_active", true)
     .eq("show_on_storefront", true);
 

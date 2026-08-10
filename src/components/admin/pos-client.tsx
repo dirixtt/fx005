@@ -11,6 +11,7 @@ import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarcodeCameraScanner } from "@/components/admin/barcode-camera-scanner";
 import { formatMoney } from "@/lib/utils";
+import { variantLabel } from "@/lib/variants";
 import {
   isNetworkError,
   loadPendingSales,
@@ -20,9 +21,11 @@ import {
   type PendingSale,
 } from "@/lib/pos-offline-queue";
 
-type Product = {
+type Variant = {
   id: string;
   name: string;
+  size: string | null;
+  color: string | null;
   sku: string | null;
   barcode: string | null;
   sale_price: number;
@@ -31,14 +34,20 @@ type Product = {
 
 type Customer = { id: string; full_name: string; phone: string | null };
 
-type CartItem = { product_id: string; name: string; sale_price: number; quantity: number };
+type CartItem = {
+  variant_id: string;
+  name: string;
+  variant_label: string;
+  sale_price: number;
+  quantity: number;
+};
 
-export function PosClient({ products, customers }: { products: Product[]; customers: Customer[] }) {
+export function PosClient({ variants, customers }: { variants: Variant[]; customers: Customer[] }) {
   const router = useRouter();
   const supabase = createClient();
 
   const [availableStock, setAvailableStock] = useState<Record<string, number>>(
-    Object.fromEntries(products.map((p) => [p.id, p.stock_quantity])),
+    Object.fromEntries(variants.map((v) => [v.id, v.stock_quantity])),
   );
   const [cart, setCart] = useState<CartItem[]>([]);
   const [barcode, setBarcode] = useState("");
@@ -110,7 +119,7 @@ export function PosClient({ products, customers }: { products: Product[]; custom
   const searchResults = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return [];
-    return products
+    return variants
       .filter(
         (p) =>
           p.name.toLowerCase().includes(q) ||
@@ -118,55 +127,64 @@ export function PosClient({ products, customers }: { products: Product[]; custom
           p.barcode?.toLowerCase().includes(q),
       )
       .slice(0, 8);
-  }, [products, search]);
+  }, [variants, search]);
 
-  function addToCart(product: Product) {
-    const available = availableStock[product.id] ?? 0;
+  function addToCart(variant: Variant) {
+    const available = availableStock[variant.id] ?? 0;
     if (available <= 0) {
-      setError(`${product.name} is out of stock`);
+      setError(`${variant.name} is out of stock`);
       return;
     }
     setError(null);
     setLastSaleId(null);
-    setAvailableStock((s) => ({ ...s, [product.id]: available - 1 }));
+    setAvailableStock((s) => ({ ...s, [variant.id]: available - 1 }));
     setCart((c) => {
-      const existing = c.find((i) => i.product_id === product.id);
+      const existing = c.find((i) => i.variant_id === variant.id);
       if (existing) {
         return c.map((i) =>
-          i.product_id === product.id ? { ...i, quantity: i.quantity + 1 } : i,
+          i.variant_id === variant.id ? { ...i, quantity: i.quantity + 1 } : i,
         );
       }
-      return [...c, { product_id: product.id, name: product.name, sale_price: product.sale_price, quantity: 1 }];
+      return [
+        ...c,
+        {
+          variant_id: variant.id,
+          name: variant.name,
+          variant_label: variantLabel(variant),
+          sale_price: variant.sale_price,
+          quantity: 1,
+        },
+      ];
     });
   }
 
-  function changeQuantity(productId: string, delta: number) {
+  function changeQuantity(variantId: string, delta: number) {
     setCart((c) => {
-      const item = c.find((i) => i.product_id === productId);
+      const item = c.find((i) => i.variant_id === variantId);
       if (!item) return c;
-      const available = availableStock[productId] ?? 0;
+      const available = availableStock[variantId] ?? 0;
       if (delta > 0 && available <= 0) {
         setError("No more stock available for this item");
         return c;
       }
-      setAvailableStock((s) => ({ ...s, [productId]: (s[productId] ?? 0) - delta }));
+      setAvailableStock((s) => ({ ...s, [variantId]: (s[variantId] ?? 0) - delta }));
       const newQty = item.quantity + delta;
       if (newQty <= 0) {
-        return c.filter((i) => i.product_id !== productId);
+        return c.filter((i) => i.variant_id !== variantId);
       }
-      return c.map((i) => (i.product_id === productId ? { ...i, quantity: newQty } : i));
+      return c.map((i) => (i.variant_id === variantId ? { ...i, quantity: newQty } : i));
     });
   }
 
-  function removeItem(productId: string) {
-    const item = cart.find((i) => i.product_id === productId);
+  function removeItem(variantId: string) {
+    const item = cart.find((i) => i.variant_id === variantId);
     if (!item) return;
-    setAvailableStock((s) => ({ ...s, [productId]: (s[productId] ?? 0) + item.quantity }));
-    setCart((c) => c.filter((i) => i.product_id !== productId));
+    setAvailableStock((s) => ({ ...s, [variantId]: (s[variantId] ?? 0) + item.quantity }));
+    setCart((c) => c.filter((i) => i.variant_id !== variantId));
   }
 
   function lookupByBarcode(code: string) {
-    const product = products.find((p) => p.barcode === code);
+    const product = variants.find((p) => p.barcode === code);
     if (!product) {
       setError(`Товар со штрихкодом "${code}" не найден`);
       return;
@@ -189,7 +207,7 @@ export function PosClient({ products, customers }: { products: Product[]; custom
     setSubmitting(true);
     setError(null);
 
-    const items = cart.map((i) => ({ product_id: i.product_id, quantity: i.quantity }));
+    const items = cart.map((i) => ({ variant_id: i.variant_id, quantity: i.quantity }));
 
     if (!navigator.onLine) {
       queueSale({ items, payment_method: paymentMethod, customer_id: customerId || undefined });
@@ -304,18 +322,18 @@ export function PosClient({ products, customers }: { products: Product[]; custom
             {cart.length === 0 && <p className="text-sm text-neutral-500">Корзина пуста.</p>}
             {cart.map((item) => (
               <div
-                key={item.product_id}
+                key={item.variant_id}
                 className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-neutral-100 pb-2 text-sm last:border-0 last:pb-0"
               >
                 <span className="min-w-0 flex-1 truncate font-medium">{item.name}</span>
                 <div className="flex items-center gap-2">
                   <span className="text-neutral-500">{formatMoney(item.sale_price)}</span>
                   <div className="flex items-center gap-1">
-                    <Button type="button" variant="outline" size="sm" onClick={() => changeQuantity(item.product_id, -1)}>
+                    <Button type="button" variant="outline" size="sm" onClick={() => changeQuantity(item.variant_id, -1)}>
                       -
                     </Button>
                     <span className="w-6 text-center">{item.quantity}</span>
-                    <Button type="button" variant="outline" size="sm" onClick={() => changeQuantity(item.product_id, 1)}>
+                    <Button type="button" variant="outline" size="sm" onClick={() => changeQuantity(item.variant_id, 1)}>
                       +
                     </Button>
                   </div>
@@ -325,7 +343,7 @@ export function PosClient({ products, customers }: { products: Product[]; custom
                     variant="ghost"
                     size="icon"
                     className="text-neutral-400 hover:text-red-600"
-                    onClick={() => removeItem(item.product_id)}
+                    onClick={() => removeItem(item.variant_id)}
                     aria-label="Удалить"
                   >
                     <Trash2 className="h-4 w-4" />

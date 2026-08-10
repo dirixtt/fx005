@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/types/database.types";
+import { variantLabel } from "@/lib/variants";
 
 const LOW_STOCK_THRESHOLD = 5;
 
@@ -27,10 +28,12 @@ export async function GET(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
   );
 
+  // Per-size, matching the dashboard: a product-level total would stay healthy
+  // while the size customers actually ask for has been out for a week.
   const { data: lowStock, error } = await supabase
-    .from("products")
-    .select("name, stock_quantity")
-    .eq("is_active", true)
+    .from("product_variants")
+    .select("size, color, stock_quantity, products!inner(name, is_active)")
+    .eq("products.is_active", true)
     .lte("stock_quantity", LOW_STOCK_THRESHOLD)
     .order("stock_quantity");
 
@@ -42,7 +45,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ sent: false, reason: "no low-stock products" });
   }
 
-  const lines = lowStock.map((p) => `• ${p.name} — ${p.stock_quantity} шт.`);
+  const lines = lowStock.map(
+    (v) => `• ${v.products.name} ${variantLabel(v)} — ${v.stock_quantity} шт.`,
+  );
   const text = `⚠️ Заканчиваются на складе (${lowStock.length}):\n\n${lines.join("\n")}`;
 
   const tgResponse = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {

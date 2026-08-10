@@ -9,9 +9,20 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { archiveProduct, restoreProduct } from "@/lib/actions/products";
 import { formatMoney, cn } from "@/lib/utils";
+import { priceRange, totalStock, variantLabel } from "@/lib/variants";
 import type { Tables } from "@/lib/types/database.types";
 
-type Product = Tables<"products"> & { categories: { id: string; name: string } | null };
+type Product = Tables<"products"> & {
+  categories: { id: string; name: string } | null;
+  product_variants: Tables<"product_variants">[];
+};
+
+/** "от 500 UZS" when sizes disagree on price, a single figure when they don't. */
+function formatPrice(product: Product): string {
+  const range = priceRange(product.product_variants);
+  if (!range) return "—";
+  return range.mixed ? `от ${formatMoney(range.min)}` : formatMoney(range.min);
+}
 
 export function InventoryTable({ products }: { products: Product[] }) {
   const router = useRouter();
@@ -50,8 +61,7 @@ export function InventoryTable({ products }: { products: Product[] }) {
             </TableHead>
             <TableHead>Название</TableHead>
             <TableHead>Категория</TableHead>
-            <TableHead>Штрихкод</TableHead>
-            <TableHead>Себестоимость</TableHead>
+            <TableHead>Размеры</TableHead>
             <TableHead>Цена</TableHead>
             <TableHead>Остаток</TableHead>
             <TableHead>Статус</TableHead>
@@ -76,14 +86,31 @@ export function InventoryTable({ products }: { products: Product[] }) {
                 </Link>
               </TableCell>
               <TableCell className="text-neutral-500">{p.categories?.name ?? "—"}</TableCell>
-              <TableCell className="text-neutral-500">{p.barcode ?? "—"}</TableCell>
-              <TableCell>{formatMoney(p.cost_price)}</TableCell>
-              <TableCell className="font-medium text-brand-700">{formatMoney(p.sale_price)}</TableCell>
+              <TableCell className="text-neutral-500">
+                {/* Sizes with nothing left are greyed rather than hidden: the seller
+                    needs to see that 42 exists and is out, not that it vanished. */}
+                <div className="flex flex-wrap gap-1">
+                  {p.product_variants.map((v) => (
+                    <span
+                      key={v.id}
+                      className={cn(
+                        "rounded px-1.5 py-0.5 text-xs",
+                        v.stock_quantity > 0
+                          ? "bg-neutral-100 text-neutral-700"
+                          : "bg-neutral-50 text-neutral-300 line-through",
+                      )}
+                    >
+                      {variantLabel(v)}
+                    </span>
+                  ))}
+                </div>
+              </TableCell>
+              <TableCell className="font-medium text-brand-700">{formatPrice(p)}</TableCell>
               <TableCell>
-                {p.stock_quantity <= 5 ? (
-                  <Badge variant="warning">{p.stock_quantity} мало</Badge>
+                {totalStock(p.product_variants) <= 5 ? (
+                  <Badge variant="warning">{totalStock(p.product_variants)} мало</Badge>
                 ) : (
-                  p.stock_quantity
+                  totalStock(p.product_variants)
                 )}
               </TableCell>
               <TableCell>
@@ -104,7 +131,7 @@ export function InventoryTable({ products }: { products: Product[] }) {
           ))}
           {!products.length && (
             <TableRow>
-              <TableCell colSpan={9} className={cn("py-8 text-center text-neutral-500")}>
+              <TableCell colSpan={8} className={cn("py-8 text-center text-neutral-500")}>
                 Товары не найдены.
               </TableCell>
             </TableRow>

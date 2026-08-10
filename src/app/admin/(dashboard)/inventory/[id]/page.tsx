@@ -9,7 +9,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
   const supabase = await createClient();
 
   const [{ data: product }, { data: categories }] = await Promise.all([
-    supabase.from("products").select("*").eq("id", id).maybeSingle(),
+    supabase.from("products").select("*, product_variants(*)").eq("id", id).maybeSingle(),
     supabase.from("categories").select("*").order("name"),
   ]);
 
@@ -27,7 +27,12 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
         </Link>
         <h1 className="mt-1 text-xl font-bold text-neutral-900">Редактировать: {product.name}</h1>
       </div>
-      <ProductForm action={boundAction} categories={categories ?? []} product={product} />
+      <ProductForm
+        action={boundAction}
+        categories={categories ?? []}
+        product={product}
+        variants={product.product_variants}
+      />
     </div>
   );
 }

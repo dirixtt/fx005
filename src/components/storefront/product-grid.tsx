@@ -5,15 +5,25 @@ import Image from "next/image";
 import { motion } from "motion/react";
 import { PackageX } from "lucide-react";
 import { formatMoney } from "@/lib/utils";
+import { priceRange, totalStock, type VariantLike } from "@/lib/variants";
 
 type Product = {
   id: string;
   name: string;
   slug: string;
-  sale_price: number;
   image_url: string | null;
-  stock_quantity: number;
+  product_variants: VariantLike[];
 };
+
+/**
+ * Sizes of one model can differ in price, so a single figure would be a lie.
+ * "от X" is shown only when they actually disagree.
+ */
+function priceLabel(product: Product): string {
+  const range = priceRange(product.product_variants);
+  if (!range) return "—";
+  return range.mixed ? `от ${formatMoney(range.min)}` : formatMoney(range.min);
+}
 
 export function ProductGrid({ products }: { products: Product[] }) {
   return (
@@ -42,7 +52,7 @@ export function ProductGrid({ products }: { products: Product[] }) {
               ) : (
                 <PackageX className="h-8 w-8" strokeWidth={1.5} />
               )}
-              {p.stock_quantity <= 0 && (
+              {totalStock(p.product_variants) <= 0 && (
                 <span className="absolute left-2 top-2 rounded-full bg-neutral-900/80 px-2 py-0.5 text-[10px] font-medium text-white">
                   Нет в наличии
                 </span>
@@ -52,7 +62,7 @@ export function ProductGrid({ products }: { products: Product[] }) {
               <p className="line-clamp-2 flex-1 text-sm font-medium text-neutral-900 group-hover:text-brand-700">
                 {p.name}
               </p>
-              <p className="text-sm font-semibold text-brand-700">{formatMoney(p.sale_price)}</p>
+              <p className="text-sm font-semibold text-brand-700">{priceLabel(p)}</p>
             </div>
           </Link>
         </motion.div>

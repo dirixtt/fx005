@@ -21,7 +21,7 @@ export default async function InventoryPage({
 
   let productsQuery = supabase
     .from("products")
-    .select("*, categories(id, name)", { count: "exact" })
+    .select("*, categories(id, name), product_variants(*)", { count: "exact" })
     .order("created_at", { ascending: false });
 
   if (category) productsQuery = productsQuery.eq("category_id", category);

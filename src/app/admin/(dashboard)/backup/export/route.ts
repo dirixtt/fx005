@@ -8,9 +8,18 @@ export async function GET() {
 
   // Every table is paged to exhaustion — this file is the owner's only backup,
   // so a silently short export would be actively misleading.
-  const [products, categories, customers, sales, saleItems] = await Promise.all([
+  const [products, variants, categories, customers, sales, saleItems] = await Promise.all([
     fetchAllRows((from, to) =>
       supabase.from("products").select("*, categories(name)").order("created_at").range(from, to),
+    ),
+    // Own sheet: price, stock and barcodes live here now, so a backup without
+    // variants would restore a catalogue with no sizes and nothing to sell.
+    fetchAllRows((from, to) =>
+      supabase
+        .from("product_variants")
+        .select("*, products(name)")
+        .order("product_id")
+        .range(from, to),
     ),
     fetchAllRows((from, to) => supabase.from("categories").select("*").order("name").range(from, to)),
     fetchAllRows((from, to) =>
@@ -26,22 +35,35 @@ export async function GET() {
     products.map((p) => ({
       Название: p.name,
       Категория: p.categories?.name ?? "",
-      SKU: p.sku ?? "",
-      Штрихкод: p.barcode ?? "",
-      Себестоимость: p.cost_price,
-      Цена: p.sale_price,
-      Остаток: p.stock_quantity,
       Активен: p.is_active ? "да" : "нет",
       "На витрине": p.show_on_storefront ? "да" : "нет",
+      Описание: p.description ?? "",
       Slug: p.slug,
       "Создан": p.created_at,
     })),
   );
   productsSheet["!cols"] = [
-    { wch: 35 }, { wch: 20 }, { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 12 },
-    { wch: 10 }, { wch: 8 }, { wch: 10 }, { wch: 16 }, { wch: 20 },
+    { wch: 35 }, { wch: 20 }, { wch: 8 }, { wch: 10 }, { wch: 40 }, { wch: 16 }, { wch: 20 },
   ];
   XLSX.utils.book_append_sheet(workbook, productsSheet, "Товары");
+
+  const variantsSheet = XLSX.utils.json_to_sheet(
+    variants.map((v) => ({
+      Товар: v.products?.name ?? "",
+      Размер: v.size ?? "",
+      Цвет: v.color ?? "",
+      SKU: v.sku ?? "",
+      Штрихкод: v.barcode ?? "",
+      Себестоимость: v.cost_price,
+      Цена: v.sale_price,
+      Остаток: v.stock_quantity,
+    })),
+  );
+  variantsSheet["!cols"] = [
+    { wch: 35 }, { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 16 },
+    { wch: 14 }, { wch: 12 }, { wch: 10 },
+  ];
+  XLSX.utils.book_append_sheet(workbook, variantsSheet, "Размеры");
 
   const categoriesSheet = XLSX.utils.json_to_sheet(
     categories.map((c) => ({ Название: c.name, Создана: c.created_at })),
@@ -76,6 +98,7 @@ export async function GET() {
     saleItems.map((i) => ({
       "ID продажи": i.sale_id,
       Товар: i.product_name,
+      Размер: [i.variant_size, i.variant_color].filter(Boolean).join(" / "),
       "Кол-во": i.quantity,
       "Цена за шт.": i.unit_price,
       Себестоимость: i.unit_cost,

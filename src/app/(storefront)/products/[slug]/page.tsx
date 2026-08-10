@@ -7,12 +7,13 @@ import { ChevronLeft, PackageX } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { AddToCartButton } from "@/components/storefront/add-to-cart-button";
 import { formatMoney } from "@/lib/utils";
+import { priceRange, totalStock } from "@/lib/variants";
 
 const getProduct = cache(async (slug: string) => {
   const supabase = await createClient();
   const { data } = await supabase
     .from("products")
-    .select("*, categories(id, name)")
+    .select("*, categories(id, name), product_variants(id, size, color, sale_price, stock_quantity)")
     .eq("slug", slug)
     .maybeSingle();
   return data;
@@ -28,9 +29,12 @@ export async function generateMetadata({
 
   if (!product) return {};
 
+  const range = priceRange(product.product_variants);
   const description = product.description
     ? product.description.slice(0, 160)
-    : `Купить ${product.name} за ${formatMoney(product.sale_price)} — в наличии в fx005.`;
+    : range
+      ? `Купить ${product.name} за ${formatMoney(range.min)} — в наличии в fx005.`
+      : `${product.name} — fx005.`;
 
   return {
     title: product.name,
@@ -61,9 +65,13 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
     offers: {
       "@type": "Offer",
       priceCurrency: "UZS",
-      price: product.sale_price,
+      // The lowest price a shopper can actually pay today, matching what the
+      // listing advertises — a price for a sold-out size would be a false offer.
+      price: priceRange(product.product_variants)?.min ?? 0,
       availability:
-        product.stock_quantity > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+        totalStock(product.product_variants) > 0
+          ? "https://schema.org/InStock"
+          : "https://schema.org/OutOfStock",
     },
   };
 
@@ -101,27 +109,19 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
               </Link>
             )}
             <h1 className="text-2xl font-bold text-neutral-900 sm:text-3xl">{product.name}</h1>
-            <p className="text-3xl font-bold text-brand-700">{formatMoney(product.sale_price)}</p>
-            {product.description && <p className="leading-relaxed text-neutral-600">{product.description}</p>}
-
-            {product.stock_quantity > 0 ? (
-              <div className="space-y-2">
-                <p className="text-sm text-neutral-500">В наличии: {product.stock_quantity} шт.</p>
-                <AddToCartButton
-                  product={{
-                    id: product.id,
-                    name: product.name,
-                    slug: product.slug,
-                    sale_price: product.sale_price,
-                    image_url: product.image_url,
-                  }}
-                />
-              </div>
-            ) : (
-              <p className="inline-block rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
-                Нет в наличии
-              </p>
+            {product.description && (
+              <p className="leading-relaxed text-neutral-600">{product.description}</p>
             )}
+
+            <AddToCartButton
+              product={{
+                id: product.id,
+                name: product.name,
+                slug: product.slug,
+                image_url: product.image_url,
+              }}
+              variants={product.product_variants}
+            />
           </div>
         </div>
       </div>

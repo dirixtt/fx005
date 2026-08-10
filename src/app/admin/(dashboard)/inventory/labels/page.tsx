@@ -10,17 +10,27 @@ export default async function InventoryLabelsPage({
   const idList = ids ? ids.split(",").filter(Boolean) : [];
 
   const supabase = await createClient();
-  const { data: products } = idList.length
+
+  // One tag per variant, not per product: price and barcode belong to the size,
+  // so a single tag for a jacket stocked in four sizes would be wrong on the shelf
+  // and unscannable at the till.
+  const { data: variants } = idList.length
     ? await supabase
-        .from("products")
-        .select("id, name, sale_price, barcode, sku, slug")
-        .in("id", idList)
+        .from("product_variants")
+        .select("id, size, color, sale_price, barcode, sku, products!inner(name, slug)")
+        .in("product_id", idList)
+        .order("product_id")
     : { data: [] };
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-bold text-neutral-900">Печать ценников</h1>
-      <LabelsPrintView products={products ?? []} />
+      <div>
+        <h1 className="text-xl font-bold text-neutral-900">Печать ценников</h1>
+        <p className="text-sm text-neutral-500">
+          {variants?.length ?? 0} ценников · по одному на каждый размер
+        </p>
+      </div>
+      <LabelsPrintView variants={variants ?? []} />
     </div>
   );
 }

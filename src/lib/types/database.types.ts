@@ -57,56 +57,91 @@ export type Database = {
         }
         Relationships: []
       }
-      products: {
+      product_variants: {
         Row: {
           barcode: string | null
-          category_id: string | null
+          color: string | null
           cost_price: number
+          created_at: string
+          id: string
+          product_id: string
+          sale_price: number
+          size: string | null
+          sku: string | null
+          stock_quantity: number
+          updated_at: string
+        }
+        Insert: {
+          barcode?: string | null
+          color?: string | null
+          cost_price?: number
+          created_at?: string
+          id?: string
+          product_id: string
+          sale_price: number
+          size?: string | null
+          sku?: string | null
+          stock_quantity?: number
+          updated_at?: string
+        }
+        Update: {
+          barcode?: string | null
+          color?: string | null
+          cost_price?: number
+          created_at?: string
+          id?: string
+          product_id?: string
+          sale_price?: number
+          size?: string | null
+          sku?: string | null
+          stock_quantity?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_variants_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      products: {
+        Row: {
+          category_id: string | null
           created_at: string
           description: string | null
           id: string
           image_url: string | null
           is_active: boolean
           name: string
-          sale_price: number
           show_on_storefront: boolean
-          sku: string | null
           slug: string
-          stock_quantity: number
           updated_at: string
         }
         Insert: {
-          barcode?: string | null
           category_id?: string | null
-          cost_price?: number
           created_at?: string
           description?: string | null
           id?: string
           image_url?: string | null
           is_active?: boolean
           name: string
-          sale_price: number
           show_on_storefront?: boolean
-          sku?: string | null
           slug: string
-          stock_quantity?: number
           updated_at?: string
         }
         Update: {
-          barcode?: string | null
           category_id?: string | null
-          cost_price?: number
           created_at?: string
           description?: string | null
           id?: string
           image_url?: string | null
           is_active?: boolean
           name?: string
-          sale_price?: number
           show_on_storefront?: boolean
-          sku?: string | null
           slug?: string
-          stock_quantity?: number
           updated_at?: string
         }
         Relationships: [
@@ -129,6 +164,9 @@ export type Database = {
           sale_id: string
           unit_cost: number
           unit_price: number
+          variant_color: string | null
+          variant_id: string | null
+          variant_size: string | null
         }
         Insert: {
           id?: string
@@ -139,6 +177,9 @@ export type Database = {
           sale_id: string
           unit_cost: number
           unit_price: number
+          variant_color?: string | null
+          variant_id?: string | null
+          variant_size?: string | null
         }
         Update: {
           id?: string
@@ -149,6 +190,9 @@ export type Database = {
           sale_id?: string
           unit_cost?: number
           unit_price?: number
+          variant_color?: string | null
+          variant_id?: string | null
+          variant_size?: string | null
         }
         Relationships: [
           {
@@ -163,6 +207,13 @@ export type Database = {
             columns: ["sale_id"]
             isOneToOne: false
             referencedRelation: "sales"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sale_items_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "product_variants"
             referencedColumns: ["id"]
           },
         ]
