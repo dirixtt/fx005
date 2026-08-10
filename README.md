@@ -61,6 +61,43 @@ The app itself needs no privileged database credentials — everything runs thro
 - Storefront checkout and POS sale creation both go through atomic RPC functions (`checkout_order`, `create_pos_sale`) that lock stock rows, validate quantities, and write the sale + decrement stock in one transaction.
 - Reporting reads `sale_items` by filtering through the `sale_id` foreign key rather than passing a list of sale ids, and caps each query at `REPORT_ROW_LIMIT`. If a period exceeds that cap the UI says the totals are incomplete instead of quietly under-reporting revenue. Past roughly that volume, move the aggregation into a Postgres function.
 
+## Telegram Business assistant (in progress)
+
+Step 1 of the roadmap only: the webhook receives `business_connection` and
+`business_message` updates and records them in `telegram_connections` /
+`telegram_messages`. It does not reply, recognise intent, or create orders yet.
+
+Requires `SUPABASE_SERVICE_ROLE_KEY`, `TELEGRAM_BOT_TOKEN` and
+`TELEGRAM_WEBHOOK_SECRET` (see `.env.example`). The seller's Telegram account
+needs Premium, since Business chatbots are a Premium feature.
+
+Register the webhook once, after deploying:
+
+```bash
+curl -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/setWebhook" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "url": "https://<your-domain>/api/telegram/webhook",
+    "secret_token": "<TELEGRAM_WEBHOOK_SECRET>",
+    "allowed_updates": ["business_connection", "business_message", "edited_business_message"]
+  }'
+```
+
+`allowed_updates` matters: Telegram does **not** send business updates unless they
+are listed explicitly, so omitting it produces a webhook that silently receives
+nothing.
+
+Then attach the bot in Telegram: Settings → Business → Chatbots → select the bot.
+Message the seller's account from a second account and the row should appear:
+
+```sql
+select direction, chat_id, text, created_at from telegram_messages order by created_at desc limit 5;
+```
+
+Messages the seller sends themselves are recorded with `direction = 'out'`, which
+is what later lets the reminder step tell an answered conversation from an
+abandoned one.
+
 ## Known follow-ups
 
 - The 465 bulk-imported products have sequential slugs (`p-0001`) rather than descriptive ones, so their URLs carry no keywords. `slugify` now transliterates Cyrillic correctly for newly created products; backfilling the existing ones needs a migration plus redirects from the old paths.

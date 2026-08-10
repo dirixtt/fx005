@@ -17,29 +17,18 @@ export type Database = {
           created_at: string
           id: string
           name: string
-          store_id: string
         }
         Insert: {
           created_at?: string
           id?: string
           name: string
-          store_id: string
         }
         Update: {
           created_at?: string
           id?: string
           name?: string
-          store_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "categories_store_id_fkey"
-            columns: ["store_id"]
-            isOneToOne: false
-            referencedRelation: "stores"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       customers: {
         Row: {
@@ -49,7 +38,6 @@ export type Database = {
           id: string
           notes: string | null
           phone: string | null
-          store_id: string
         }
         Insert: {
           created_at?: string
@@ -58,7 +46,6 @@ export type Database = {
           id?: string
           notes?: string | null
           phone?: string | null
-          store_id: string
         }
         Update: {
           created_at?: string
@@ -67,109 +54,59 @@ export type Database = {
           id?: string
           notes?: string | null
           phone?: string | null
-          store_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "customers_store_id_fkey"
-            columns: ["store_id"]
-            isOneToOne: false
-            referencedRelation: "stores"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      product_variants: {
-        Row: {
-          barcode: string | null
-          color: string | null
-          cost_price: number
-          created_at: string
-          id: string
-          product_id: string
-          sale_price: number
-          size: string | null
-          sku: string | null
-          stock_quantity: number
-          store_id: string
-          updated_at: string
-        }
-        Insert: {
-          barcode?: string | null
-          color?: string | null
-          cost_price?: number
-          created_at?: string
-          id?: string
-          product_id: string
-          sale_price: number
-          size?: string | null
-          sku?: string | null
-          stock_quantity?: number
-          store_id: string
-          updated_at?: string
-        }
-        Update: {
-          barcode?: string | null
-          color?: string | null
-          cost_price?: number
-          created_at?: string
-          id?: string
-          product_id?: string
-          sale_price?: number
-          size?: string | null
-          sku?: string | null
-          stock_quantity?: number
-          store_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "product_variants_product_id_store_id_fkey"
-            columns: ["product_id", "store_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id", "store_id"]
-          },
-        ]
+        Relationships: []
       }
       products: {
         Row: {
+          barcode: string | null
           category_id: string | null
+          cost_price: number
           created_at: string
           description: string | null
           id: string
           image_url: string | null
           is_active: boolean
           name: string
+          sale_price: number
           show_on_storefront: boolean
+          sku: string | null
           slug: string
-          store_id: string
+          stock_quantity: number
           updated_at: string
         }
         Insert: {
+          barcode?: string | null
           category_id?: string | null
+          cost_price?: number
           created_at?: string
           description?: string | null
           id?: string
           image_url?: string | null
           is_active?: boolean
           name: string
+          sale_price: number
           show_on_storefront?: boolean
+          sku?: string | null
           slug: string
-          store_id: string
+          stock_quantity?: number
           updated_at?: string
         }
         Update: {
+          barcode?: string | null
           category_id?: string | null
+          cost_price?: number
           created_at?: string
           description?: string | null
           id?: string
           image_url?: string | null
           is_active?: boolean
           name?: string
+          sale_price?: number
           show_on_storefront?: boolean
+          sku?: string | null
           slug?: string
-          store_id?: string
+          stock_quantity?: number
           updated_at?: string
         }
         Relationships: [
@@ -178,13 +115,6 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "categories"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "products_store_id_fkey"
-            columns: ["store_id"]
-            isOneToOne: false
-            referencedRelation: "stores"
             referencedColumns: ["id"]
           },
         ]
@@ -199,9 +129,6 @@ export type Database = {
           sale_id: string
           unit_cost: number
           unit_price: number
-          variant_color: string | null
-          variant_id: string | null
-          variant_size: string | null
         }
         Insert: {
           id?: string
@@ -212,9 +139,6 @@ export type Database = {
           sale_id: string
           unit_cost: number
           unit_price: number
-          variant_color?: string | null
-          variant_id?: string | null
-          variant_size?: string | null
         }
         Update: {
           id?: string
@@ -225,9 +149,6 @@ export type Database = {
           sale_id?: string
           unit_cost?: number
           unit_price?: number
-          variant_color?: string | null
-          variant_id?: string | null
-          variant_size?: string | null
         }
         Relationships: [
           {
@@ -242,13 +163,6 @@ export type Database = {
             columns: ["sale_id"]
             isOneToOne: false
             referencedRelation: "sales"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "sale_items_variant_id_fkey"
-            columns: ["variant_id"]
-            isOneToOne: false
-            referencedRelation: "product_variants"
             referencedColumns: ["id"]
           },
         ]
@@ -266,7 +180,6 @@ export type Database = {
           payment_method: Database["public"]["Enums"]["payment_method"] | null
           shipping_address: string | null
           status: Database["public"]["Enums"]["sale_status"]
-          store_id: string
           subtotal: number
           total: number
         }
@@ -282,7 +195,6 @@ export type Database = {
           payment_method?: Database["public"]["Enums"]["payment_method"] | null
           shipping_address?: string | null
           status?: Database["public"]["Enums"]["sale_status"]
-          store_id: string
           subtotal?: number
           total?: number
         }
@@ -298,7 +210,6 @@ export type Database = {
           payment_method?: Database["public"]["Enums"]["payment_method"] | null
           shipping_address?: string | null
           status?: Database["public"]["Enums"]["sale_status"]
-          store_id?: string
           subtotal?: number
           total?: number
         }
@@ -310,50 +221,7 @@ export type Database = {
             referencedRelation: "customers"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "sales_store_id_fkey"
-            columns: ["store_id"]
-            isOneToOne: false
-            referencedRelation: "stores"
-            referencedColumns: ["id"]
-          },
         ]
-      }
-      stores: {
-        Row: {
-          created_at: string
-          id: string
-          name: string
-          owner_user_id: string
-          pairing_code: string | null
-          pairing_code_expires_at: string | null
-          slug: string
-          telegram_user_id: number | null
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          name: string
-          owner_user_id: string
-          pairing_code?: string | null
-          pairing_code_expires_at?: string | null
-          slug: string
-          telegram_user_id?: number | null
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          name?: string
-          owner_user_id?: string
-          pairing_code?: string | null
-          pairing_code_expires_at?: string | null
-          slug?: string
-          telegram_user_id?: number | null
-          updated_at?: string
-        }
-        Relationships: []
       }
       telegram_connections: {
         Row: {
@@ -362,7 +230,6 @@ export type Database = {
           created_at: string
           id: string
           is_enabled: boolean
-          store_id: string
           telegram_user_id: number
           updated_at: string
         }
@@ -372,7 +239,6 @@ export type Database = {
           created_at?: string
           id?: string
           is_enabled?: boolean
-          store_id: string
           telegram_user_id: number
           updated_at?: string
         }
@@ -382,19 +248,10 @@ export type Database = {
           created_at?: string
           id?: string
           is_enabled?: boolean
-          store_id?: string
           telegram_user_id?: number
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "telegram_connections_store_id_fkey"
-            columns: ["store_id"]
-            isOneToOne: false
-            referencedRelation: "stores"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       telegram_messages: {
         Row: {
@@ -404,7 +261,6 @@ export type Database = {
           direction: string
           id: string
           raw: Json
-          store_id: string | null
           telegram_message_id: number | null
           telegram_user_id: number | null
           text: string | null
@@ -416,7 +272,6 @@ export type Database = {
           direction: string
           id?: string
           raw: Json
-          store_id?: string | null
           telegram_message_id?: number | null
           telegram_user_id?: number | null
           text?: string | null
@@ -428,27 +283,17 @@ export type Database = {
           direction?: string
           id?: string
           raw?: Json
-          store_id?: string | null
           telegram_message_id?: number | null
           telegram_user_id?: number | null
           text?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "telegram_messages_store_id_fkey"
-            columns: ["store_id"]
-            isOneToOne: false
-            referencedRelation: "stores"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      auth_store_id: { Args: Record<PropertyKey, never>; Returns: string }
       cancel_online_order: { Args: { p_order_id: string }; Returns: undefined }
       checkout_order: {
         Args: {
@@ -457,7 +302,6 @@ export type Database = {
           p_customer_phone: string
           p_items: Json
           p_shipping_address?: string
-          p_store_id: string
         }
         Returns: string
       }
@@ -484,7 +328,7 @@ export type Database = {
     }
     Enums: {
       payment_method: "cash" | "card" | "other"
-      sale_channel: "pos" | "online" | "telegram"
+      sale_channel: "pos" | "online"
       sale_status: "pending" | "completed" | "cancelled"
     }
     CompositeTypes: {
@@ -614,7 +458,7 @@ export const Constants = {
   public: {
     Enums: {
       payment_method: ["cash", "card", "other"],
-      sale_channel: ["pos", "online", "telegram"],
+      sale_channel: ["pos", "online"],
       sale_status: ["pending", "completed", "cancelled"],
     },
   },
