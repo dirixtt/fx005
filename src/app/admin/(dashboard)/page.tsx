@@ -46,6 +46,7 @@ export default async function DashboardPage() {
           label="Выручка сегодня"
           value={formatMoney(todayRevenue)}
           accent="brand"
+          index={0}
         />
         <StatCard
           icon={<Clock className="h-5 w-5" strokeWidth={2} />}
@@ -53,12 +54,14 @@ export default async function DashboardPage() {
           value={pendingOrders ?? 0}
           href="/admin/orders"
           accent="blue"
+          index={1}
         />
         <StatCard
           icon={<AlertTriangle className="h-5 w-5" strokeWidth={2} />}
           label="Товары заканчиваются"
           value={lowStock?.length ?? 0}
           accent={lowStock && lowStock.length > 0 ? "amber" : "neutral"}
+          index={2}
         />
       </div>
 

@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AnimatedCard } from "@/components/ui/animated-card";
 import { ConversationList } from "@/components/admin/conversation-list";
 
 /**
@@ -56,7 +57,7 @@ export default async function TelegramPage() {
       )}
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        <Card>
+        <AnimatedCard index={0}>
           <CardHeader>
             <CardTitle>Подключение</CardTitle>
           </CardHeader>
@@ -65,27 +66,27 @@ export default async function TelegramPage() {
               {connection?.is_enabled ? "Активно" : "Нет"}
             </Badge>
           </CardContent>
-        </Card>
-        <Card>
+        </AnimatedCard>
+        <AnimatedCard index={1}>
           <CardHeader>
             <CardTitle>Вопросов клиентов</CardTitle>
           </CardHeader>
           <CardContent className="text-2xl font-bold text-neutral-900">{inbound.length}</CardContent>
-        </Card>
-        <Card>
+        </AnimatedCard>
+        <AnimatedCard index={2}>
           <CardHeader>
             <CardTitle>Понял бот</CardTitle>
           </CardHeader>
           <CardContent className="text-2xl font-bold text-brand-700">{answered}</CardContent>
-        </Card>
-        <Card>
+        </AnimatedCard>
+        <AnimatedCard index={3}>
           <CardHeader>
             <CardTitle>Передано вам</CardTitle>
           </CardHeader>
           <CardContent className="text-2xl font-bold text-neutral-900">
             {inbound.length - answered}
           </CardContent>
-        </Card>
+        </AnimatedCard>
       </div>
 
       <ConversationList messages={messages ?? []} />

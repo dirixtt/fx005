@@ -1,3 +1,6 @@
+"use client";
+
+import { motion } from "motion/react";
 import { Badge } from "@/components/ui/badge";
 
 /**
@@ -55,45 +58,66 @@ export function ConversationList({ messages }: { messages: ConversationMessage[]
 
   return (
     <div className="space-y-4">
-      {order.map((chatId) => {
+      {order.map((chatId, chatIndex) => {
         // Reversed back to reading order within a conversation.
         const thread = [...(byChat.get(chatId) ?? [])].reverse();
         const waiting = thread[thread.length - 1]?.direction === "in";
 
         return (
-          <div key={chatId} className="rounded-xl border border-neutral-200 p-4">
+          <motion.div
+            key={chatId}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            // Capped so a long list still finishes settling in well under a
+            // second — frequency of use argues for subtle here, not a show.
+            transition={{ duration: 0.3, delay: Math.min(chatIndex, 8) * 0.035, ease: "easeOut" }}
+            className="rounded-xl border border-neutral-200 p-4"
+          >
             <div className="mb-3 flex items-center justify-between gap-2">
               <span className="font-mono text-xs text-neutral-500">#{chatId}</span>
-              {waiting && <Badge variant="warning">Ждёт ответа</Badge>}
+              {waiting && (
+                <motion.span
+                  animate={{ opacity: [1, 0.55, 1] }}
+                  transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
+                >
+                  <Badge variant="warning">Ждёт ответа</Badge>
+                </motion.span>
+              )}
             </div>
 
             <div className="space-y-2">
-              {thread.map((message) => (
-                <div
-                  key={message.id}
-                  className={
-                    message.direction === "in"
-                      ? "flex flex-col items-start"
-                      : "flex flex-col items-end"
-                  }
-                >
-                  <div
-                    className={
-                      message.direction === "in"
-                        ? "max-w-[85%] rounded-2xl rounded-bl-sm bg-neutral-100 px-3 py-2 text-sm whitespace-pre-wrap text-neutral-900"
-                        : "max-w-[85%] rounded-2xl rounded-br-sm bg-brand-600 px-3 py-2 text-sm whitespace-pre-wrap text-white"
-                    }
+              {thread.map((message, messageIndex) => {
+                const fromCustomer = message.direction === "in";
+                return (
+                  <motion.div
+                    key={message.id}
+                    initial={{ opacity: 0, x: fromCustomer ? -8 : 8 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{
+                      duration: 0.22,
+                      delay: Math.min(messageIndex, 6) * 0.02,
+                      ease: "easeOut",
+                    }}
+                    className={fromCustomer ? "flex flex-col items-start" : "flex flex-col items-end"}
                   >
-                    {message.text ?? <span className="opacity-60">без текста</span>}
-                  </div>
-                  <span className="mt-0.5 text-[11px] text-neutral-400">
-                    {time(message.created_at)}
-                    {message.intent && ` · ${INTENT_LABELS[message.intent] ?? message.intent}`}
-                  </span>
-                </div>
-              ))}
+                    <div
+                      className={
+                        fromCustomer
+                          ? "max-w-[85%] rounded-2xl rounded-bl-sm bg-neutral-100 px-3 py-2 text-sm whitespace-pre-wrap text-neutral-900"
+                          : "max-w-[85%] rounded-2xl rounded-br-sm bg-brand-600 px-3 py-2 text-sm whitespace-pre-wrap text-white"
+                      }
+                    >
+                      {message.text ?? <span className="opacity-60">без текста</span>}
+                    </div>
+                    <span className="mt-0.5 text-[11px] text-neutral-400">
+                      {time(message.created_at)}
+                      {message.intent && ` · ${INTENT_LABELS[message.intent] ?? message.intent}`}
+                    </span>
+                  </motion.div>
+                );
+              })}
             </div>
-          </div>
+          </motion.div>
         );
       })}
     </div>
