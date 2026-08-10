@@ -61,3 +61,43 @@ body {
 * {
   scrollbar-color: #d6d3d1 transparent;
 }
+
+/* ---------------------------------------------------------------------------
+   Accessibility preferences.
+
+   MotionConfig handles the `motion` components; these cover everything driven by
+   plain CSS — button press scales, the card hover lift, colour transitions.
+   --------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  /* Not "no feedback" — a gentler, non-vestibular equivalent. Durations are cut
+     to near-instant rather than zeroed so colour and opacity changes still read
+     as a response, while translation and scaling stop moving the viewport. */
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* The lift on a product card and the press scale on a button are pure
+     translation/scale, which is exactly what this preference asks us to drop. */
+  .group:hover .group-hover\:scale-105,
+  a:hover,
+  button:active {
+    transform: none !important;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  /* Frostier, not see-through: raise the background to opaque and drop the blur
+     rather than leaving a half-legible surface over scrolling content. */
+  .backdrop-blur,
+  .backdrop-blur-sm,
+  .backdrop-blur-md {
+    backdrop-filter: none !important;
+    background-color: #ffffff !important;
+  }
+}

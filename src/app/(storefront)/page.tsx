@@ -59,7 +59,7 @@ export default async function StorefrontHomePage({
     <div className="space-y-6">
       <div className="overflow-hidden rounded-2xl bg-ink-950 px-6 py-8 sm:px-10 sm:py-12">
         <p className="text-xs font-semibold uppercase tracking-widest text-brand-400">Магазин инструментов</p>
-        <h1 className="mt-2 max-w-lg text-2xl font-bold text-white sm:text-3xl">
+        <h1 className="mt-2 max-w-lg text-2xl font-bold leading-tight tracking-tight text-white sm:text-3xl">
           {q ? `Результаты по запросу «${q}»` : "Всё для дома, стройки и сада"}
         </h1>
         <p className="mt-2 max-w-md text-sm text-neutral-400">

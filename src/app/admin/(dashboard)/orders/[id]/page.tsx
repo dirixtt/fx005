@@ -32,7 +32,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           ← Назад к заказам
         </Link>
         <div className="mt-1 flex items-center gap-3">
-          <h1 className="text-xl font-bold text-neutral-900">Заказ #{order.id.slice(0, 8)}</h1>
+          <h1 className="text-xl font-bold tracking-tight text-neutral-900">Заказ #{order.id.slice(0, 8)}</h1>
           <Badge
             variant={
               order.status === "completed" ? "success" : order.status === "pending" ? "warning" : "destructive"

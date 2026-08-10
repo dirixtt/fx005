@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { Check, ShoppingCart } from "lucide-react";
 import { useCart } from "@/lib/cart-context";
 import { Button } from "@/components/ui/button";
@@ -49,7 +50,12 @@ export function AddToCartButton({
                   onClick={() => setSelectedId(variant.id)}
                   aria-pressed={variant.id === selectedId}
                   className={cn(
-                    "rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors",
+                    "min-h-11 min-w-11 rounded-lg border px-3 py-1.5 text-sm font-medium",
+                    // Feedback lands on pointer-down, not on release: waiting for
+                    // the click to acknowledge a tap is what makes a UI feel dead.
+                    "transition-[transform,background-color,border-color] duration-100 ease-out",
+                    "active:scale-[0.96] disabled:active:scale-100",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2",
                     variant.id === selectedId
                       ? "border-brand-600 bg-brand-50 text-brand-700"
                       : "border-neutral-300 text-neutral-700 hover:border-brand-300",
@@ -68,7 +74,21 @@ export function AddToCartButton({
 
       {selected ? (
         <div className="space-y-2">
-          <p className="text-3xl font-bold text-brand-700">{formatMoney(selected.sale_price)}</p>
+          {/* Keyed on the variant so the figure cross-fades when a size is picked:
+              the price is the answer to that tap, and swapping it silently makes
+              the two look unrelated. MotionConfig drops this under reduced motion. */}
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.p
+              key={selected.id}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.15, ease: "easeOut" }}
+              className="text-3xl font-bold tracking-tight text-brand-700"
+            >
+              {formatMoney(selected.sale_price)}
+            </motion.p>
+          </AnimatePresence>
           <p className="text-sm text-neutral-500">В наличии: {selected.stock_quantity} шт.</p>
           <Button
             type="button"

@@ -63,7 +63,7 @@ export default function CheckoutPage() {
   return (
     <div className="grid grid-cols-1 gap-10 md:grid-cols-2">
       <motion.div initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.25 }}>
-        <h1 className="mb-5 text-2xl font-bold text-neutral-900">Оформление заказа</h1>
+        <h1 className="mb-5 text-2xl font-bold tracking-tight text-neutral-900">Оформление заказа</h1>
         <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border border-neutral-200 bg-white p-5 shadow-sm">
           <div className="space-y-1.5">
             <Label htmlFor="name">Имя и фамилия</Label>

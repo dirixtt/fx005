@@ -28,7 +28,7 @@ export default async function CustomersPage({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-neutral-900">Клиенты</h1>
+        <h1 className="text-xl font-bold tracking-tight text-neutral-900">Клиенты</h1>
         <p className="text-sm text-neutral-500">{count ?? 0} клиентов всего</p>
       </div>
 

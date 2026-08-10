@@ -108,7 +108,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                 {product.categories.name}
               </Link>
             )}
-            <h1 className="text-2xl font-bold text-neutral-900 sm:text-3xl">{product.name}</h1>
+            <h1 className="text-2xl font-bold leading-tight tracking-tight text-neutral-900 sm:text-3xl">{product.name}</h1>
             {product.description && (
               <p className="leading-relaxed text-neutral-600">{product.description}</p>
             )}
