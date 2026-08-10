@@ -44,6 +44,19 @@ export type TelegramPhotoSize = {
   file_size?: number;
 };
 
+/**
+ * Present when the customer sent a voice note. There is no transcription
+ * pipeline for it (that is a separate, much bigger feature — real speech
+ * recognition, not a config toggle) — its only role right now is telling the
+ * webhook "something arrived that is not text or a photo", so it gets
+ * acknowledged instead of silently vanishing. Voice messages carry no
+ * `caption` field in the Bot API, unlike photos.
+ */
+export type TelegramVoice = {
+  file_id: string;
+  duration: number;
+};
+
 export type BusinessMessage = {
   message_id: number;
   business_connection_id?: string;
@@ -53,6 +66,7 @@ export type BusinessMessage = {
   text?: string;
   caption?: string;
   photo?: TelegramPhotoSize[];
+  voice?: TelegramVoice;
 };
 
 export type TelegramUpdate = {

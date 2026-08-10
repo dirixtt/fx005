@@ -16,6 +16,14 @@ export type AssistantSettings = {
   canAnswerShopInfo: boolean;
   canPlaceOrders: boolean;
   canMatchPhotos: boolean;
+  /**
+   * Whether the bot says anything at all when it has decided not to answer for
+   * real. On: a fixed "give me a moment" reply plus an immediate ping to the
+   * seller, instead of the customer facing total silence. Off restores the
+   * original behaviour — pure silence, with the periodic reminder as the only
+   * safety net.
+   */
+  acknowledgeUnanswered: boolean;
   reminderMinutes: number;
   languageMode: "auto" | IntentLanguage;
   signature: string | null;
@@ -37,6 +45,7 @@ export const DEFAULT_SETTINGS: AssistantSettings = {
   canAnswerShopInfo: true,
   canPlaceOrders: false,
   canMatchPhotos: false,
+  acknowledgeUnanswered: true,
   reminderMinutes: 15,
   languageMode: "auto",
   signature: null,
@@ -61,6 +70,7 @@ export async function loadAssistantSettings(
     canAnswerShopInfo: data.can_answer_shop_info,
     canPlaceOrders: data.can_place_orders,
     canMatchPhotos: data.can_match_photos,
+    acknowledgeUnanswered: data.acknowledge_unanswered,
     reminderMinutes: data.reminder_minutes,
     languageMode: data.language_mode as "auto" | IntentLanguage,
     signature: data.signature,

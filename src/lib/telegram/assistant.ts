@@ -19,13 +19,18 @@ import { inStock, priceRange, variantLabel } from "@/lib/variants";
 import { formatMoney } from "@/lib/utils";
 
 /**
- * The assistant loop: read one customer message, decide, answer or stay quiet.
+ * The assistant loop: read one customer message, decide, answer or hand off.
  *
  * The shape of every branch below is the same — look something up in Postgres,
- * pick a template, fill it in — and where a lookup comes back ambiguous or empty
- * the branch ends in silence. Silence is a real answer here: the conversation
- * stays on the seller's unanswered list (Step 6) and a human picks it up. The one
- * thing that never happens is the bot filling a gap with something plausible.
+ * pick a template, fill it in — and where a lookup comes back ambiguous or
+ * empty, the branch falls through to `notifyUnhandled`: a fixed "give me a
+ * moment" reply plus an immediate ping to the seller (both gated by
+ * `acknowledgeUnanswered`), rather than either total silence or a guess. The
+ * conversation still lands on the seller's unanswered list either way (Step
+ * 6) — the acknowledgment is a courtesy to the customer, not a real answer,
+ * and unanswered_chats() is written to see straight through it. The one thing
+ * that never happens, acknowledged or not, is the bot filling the gap itself
+ * with something plausible.
  */
 
 type Client = SupabaseClient<Database>;
@@ -61,6 +66,8 @@ export type InboundMessage = {
   senderName: string | null;
   /** The largest available size of an attached photo, if any. */
   photoFileId: string | null;
+  /** True for a voice note. There is no transcription pipeline — see types.ts. */
+  hasVoice: boolean;
 };
 
 export async function handleInboundMessage(message: InboundMessage): Promise<void> {
@@ -90,6 +97,17 @@ export async function handleInboundMessage(message: InboundMessage): Promise<voi
   if (chat?.state === "awaiting_phone_for_status") {
     const language = (chat.draft as unknown as StatusDraft | null)?.language ?? "ru";
     await answerOrderStatusFromText(ctx, language, message.text);
+    return;
+  }
+
+  // A voice note has no text to classify and nothing this pipeline can listen
+  // to — transcription is a real feature (speech recognition), not something
+  // to fake here. It is not, however, nothing: a customer who gets silence
+  // back from a voice message they clearly sent will assume it was never
+  // received. Acknowledge and hand it to the seller, exactly like any other
+  // message the bot cannot answer.
+  if (!message.text && !message.photoFileId && message.hasVoice) {
+    await notifyUnhandled(ctx, "ru", "[голосовое сообщение]");
     return;
   }
 
@@ -129,18 +147,36 @@ async function dispatch(
   // Greetings, complaints, and anything the classifier was unsure of. The seller
   // handles these; the bot has nothing useful to add and every attempt would be
   // a guess.
-  if (intent.kind === "other") return;
+  if (intent.kind === "other") {
+    await notifyUnhandled(ctx, intent.language);
+    return;
+  }
 
-  // Each capability gates its intent the same way an unrecognised message would:
-  // silence, and a line on the seller's unanswered list. There is deliberately no
-  // separate "I can't help with that" template — a disabled capability and a
-  // genuinely unclear message should look identical to the seller, who handles
-  // both by hand either way.
-  if (intent.kind === "check_availability" && !ctx.settings.canAnswerAvailability) return;
-  if (intent.kind === "ask_price" && !ctx.settings.canAnswerPrice) return;
-  if (intent.kind === "place_order" && !ctx.settings.canPlaceOrders) return;
-  if (intent.kind === "check_order_status" && !ctx.settings.canAnswerOrderStatus) return;
-  if (intent.kind === "ask_shop_info" && !ctx.settings.canAnswerShopInfo) return;
+  // Each capability gates its intent the same way an unrecognised message would
+  // — a "give me a moment" reply and a ping to the seller, not a template
+  // explaining which feature is off. A disabled capability and a genuinely
+  // unclear message should look identical to the customer, and to the seller
+  // handling both by hand either way.
+  if (intent.kind === "check_availability" && !ctx.settings.canAnswerAvailability) {
+    await notifyUnhandled(ctx, intent.language);
+    return;
+  }
+  if (intent.kind === "ask_price" && !ctx.settings.canAnswerPrice) {
+    await notifyUnhandled(ctx, intent.language);
+    return;
+  }
+  if (intent.kind === "place_order" && !ctx.settings.canPlaceOrders) {
+    await notifyUnhandled(ctx, intent.language);
+    return;
+  }
+  if (intent.kind === "check_order_status" && !ctx.settings.canAnswerOrderStatus) {
+    await notifyUnhandled(ctx, intent.language);
+    return;
+  }
+  if (intent.kind === "ask_shop_info" && !ctx.settings.canAnswerShopInfo) {
+    await notifyUnhandled(ctx, intent.language);
+    return;
+  }
 
   // These two are about the shop, not a product — resolving a product first
   // would be wasted work at best and a wrong "which product?" prompt at worst.
@@ -185,6 +221,7 @@ async function dispatch(
     // They asked a real question about a product we cannot identify. Answering
     // "which product?" here would be reasonable, but the honest reading is that
     // the catalogue does not have what they named — and only a human can say so.
+    await notifyUnhandled(ctx, intent.language);
     return;
   }
 
@@ -383,6 +420,7 @@ async function lookupOrderStatus(ctx: Ctx, language: IntentLanguage, phone: stri
 
   if (error) {
     console.error("[assistant] recent_orders_by_phone failed", error.message);
+    await notifyUnhandled(ctx, language);
     return;
   }
 
@@ -403,14 +441,20 @@ async function answerShopInfo(ctx: Ctx, language: IntentLanguage, topic: ShopInf
 
     // No zones configured — the honest reading is that this has not been set up
     // yet, not that delivery costs nothing.
-    if (!zones || zones.length === 0) return;
+    if (!zones || zones.length === 0) {
+      await notifyUnhandled(ctx, language);
+      return;
+    }
     await reply(ctx, t.deliveryReply(language, zones));
     return;
   }
 
   const { data: info } = await ctx.supabase.from("shop_info").select("payment_text, hours_text").maybeSingle();
   const text = topic === "payment" ? info?.payment_text : info?.hours_text;
-  if (!text) return;
+  if (!text) {
+    await notifyUnhandled(ctx, language);
+    return;
+  }
   await reply(ctx, t.shopTextReply(text));
 }
 
@@ -521,5 +565,80 @@ async function reply(ctx: Ctx, text: string): Promise<void> {
     // Telegram echoes our own sends back through the webhook; whichever write
     // lands second is a no-op rather than an error.
     { onConflict: "chat_id,telegram_message_id", ignoreDuplicates: true },
+  );
+}
+
+/**
+ * Sends the "give me a moment" reply and logs it — but tagged `assistant_ack`,
+ * not `assistant`, which is the one thing that matters here. `reply()`'s log
+ * entry is read by unanswered_chats() (0013_acknowledgments.sql) as "the bot
+ * answered this chat"; if the acknowledgment used that same tag, the customer's
+ * real, still-unanswered question would drop off the seller's reminder list the
+ * instant this message went out. The SQL function is told to look straight
+ * through `assistant_ack` rows specifically so that cannot happen.
+ */
+async function replyAck(ctx: Ctx, text: string): Promise<void> {
+  const signed = withSignature(ctx.settings, text);
+  const result = await replyToCustomer(ctx.message.chatId, signed, ctx.message.businessConnectionId);
+
+  if (!result.ok) {
+    console.error("[assistant] ack reply failed", ctx.message.chatId, result.error);
+    return;
+  }
+
+  await ctx.supabase.from("telegram_messages").upsert(
+    {
+      business_connection_id: ctx.message.businessConnectionId,
+      chat_id: ctx.message.chatId,
+      telegram_user_id: null,
+      telegram_message_id: result.messageId,
+      direction: "out",
+      text: signed,
+      raw: { source: "assistant_ack" } as never,
+    },
+    { onConflict: "chat_id,telegram_message_id", ignoreDuplicates: true },
+  );
+}
+
+/** One heads-up per burst, not one per confused message in a row. */
+const ACK_NOTIFY_THROTTLE_MS = 5 * 60 * 1000;
+
+/**
+ * Called from every point in dispatch() that used to just `return` in silence.
+ * Two things happen, both gated by `acknowledgeUnanswered`: the customer hears
+ * "give me a moment" instead of nothing, and the seller is pinged right now
+ * instead of waiting for the next /api/cron/unanswered run (still 15 minutes
+ * away by default). The periodic reminder is untouched by this — it is not
+ * told this ping happened, so it still nags again later if the seller has not
+ * actually answered by then.
+ */
+async function notifyUnhandled(ctx: Ctx, language: IntentLanguage, previewOverride?: string): Promise<void> {
+  if (!ctx.settings.acknowledgeUnanswered) return;
+
+  await replyAck(ctx, t.holdOnReply(language));
+
+  const { data: chat } = await ctx.supabase
+    .from("telegram_chats")
+    .select("last_ack_notified_at")
+    .eq("chat_id", ctx.message.chatId)
+    .maybeSingle();
+
+  const now = Date.now();
+  const lastPing = chat?.last_ack_notified_at ? new Date(chat.last_ack_notified_at).getTime() : 0;
+  if (now - lastPing < ACK_NOTIFY_THROTTLE_MS) return;
+
+  const preview = (previewOverride ?? ctx.message.text ?? "").replace(/\s+/g, " ").trim().slice(0, 120);
+  await notifySeller(
+    `🔔 Бот не смог ответить сам\n\n«${preview || "без текста"}»\n\nЧат #${ctx.message.chatId} — /admin/telegram`,
+  );
+
+  await ctx.supabase.from("telegram_chats").upsert(
+    {
+      chat_id: ctx.message.chatId,
+      business_connection_id: ctx.message.businessConnectionId,
+      last_ack_notified_at: new Date(now).toISOString(),
+      updated_at: new Date(now).toISOString(),
+    },
+    { onConflict: "chat_id" },
   );
 }

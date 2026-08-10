@@ -39,6 +39,24 @@ export function AssistantSettingsForm({ settings }: { settings: Settings }) {
         </span>
       </label>
 
+      <label className="flex items-center gap-3 rounded-lg border border-neutral-200 p-3">
+        <input
+          type="checkbox"
+          name="acknowledge_unanswered"
+          defaultChecked={settings.acknowledge_unanswered}
+          className="h-4 w-4"
+        />
+        <span>
+          <span className="block text-sm font-medium text-neutral-900">
+            Отвечать «секунду, уточню», когда бот не может помочь сам
+          </span>
+          <span className="block text-xs text-neutral-500">
+            Выключено — клиент не получает вообще ничего, пока вы не ответите вручную. Голосовые
+            сообщения тоже сюда относятся: бот их не распознаёт, только подтверждает получение.
+          </span>
+        </span>
+      </label>
+
       <div className="space-y-2">
         <p className="text-sm font-medium text-neutral-700">Что отвечает сам</p>
         {CAPABILITIES.map((cap) => (

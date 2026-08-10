@@ -14,6 +14,7 @@ export type Database = {
     Tables: {
       assistant_settings: {
         Row: {
+          acknowledge_unanswered: boolean
           can_answer_availability: boolean
           can_answer_order_status: boolean
           can_answer_price: boolean
@@ -29,6 +30,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          acknowledge_unanswered?: boolean
           can_answer_availability?: boolean
           can_answer_order_status?: boolean
           can_answer_price?: boolean
@@ -44,6 +46,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          acknowledge_unanswered?: boolean
           can_answer_availability?: boolean
           can_answer_order_status?: boolean
           can_answer_price?: boolean
@@ -377,6 +380,7 @@ export type Database = {
           created_at: string
           customer_phone: string | null
           draft: Json | null
+          last_ack_notified_at: string | null
           last_product_id: string | null
           last_reminded_at: string | null
           state: string
@@ -388,6 +392,7 @@ export type Database = {
           created_at?: string
           customer_phone?: string | null
           draft?: Json | null
+          last_ack_notified_at?: string | null
           last_product_id?: string | null
           last_reminded_at?: string | null
           state?: string
@@ -399,6 +404,7 @@ export type Database = {
           created_at?: string
           customer_phone?: string | null
           draft?: Json | null
+          last_ack_notified_at?: string | null
           last_product_id?: string | null
           last_reminded_at?: string | null
           state?: string

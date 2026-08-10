@@ -131,3 +131,16 @@ describe("shop info replies", () => {
     expect(t.shopTextReply("Оплата картой при получении")).toBe("Оплата картой при получении");
   });
 });
+
+describe("holdOnReply", () => {
+  it("says 'not yet', not why", () => {
+    // This template is sent from disabled capabilities, unclear messages, voice
+    // notes, and lookup failures alike — it must never claim a specific reason,
+    // because that reason would have to be written as free text somewhere.
+    const ru = t.holdOnReply("ru");
+    const uz = t.holdOnReply("uz");
+    expect(ru).not.toBe(uz);
+    expect(ru.length).toBeGreaterThan(0);
+    expect(uz.length).toBeGreaterThan(0);
+  });
+});

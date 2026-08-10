@@ -22,6 +22,22 @@ function pick(language: IntentLanguage, copy: Copy): string {
   return copy[language] ?? copy.ru;
 }
 
+/**
+ * Sent whenever the bot has decided not to answer for real — an unclear
+ * message, a disabled capability, a product it could not find, a voice message
+ * it cannot even attempt to read. It does not say why: explaining would mean
+ * writing a sentence about the shop's own limitations, and that sentence would
+ * have to come from somewhere the model is allowed to speak freely, which is
+ * exactly what this file exists to prevent. It only says "not yet" — the
+ * seller is pinged immediately in assistant.ts and answers the rest.
+ */
+export function holdOnReply(language: IntentLanguage): string {
+  return pick(language, {
+    ru: "Секунду, уточню у продавца и отвечу.",
+    uz: "Bir daqiqa, sotuvchidan aniqlashtirib javob beraman.",
+  });
+}
+
 export function inStockReply(
   language: IntentLanguage,
   product: string,

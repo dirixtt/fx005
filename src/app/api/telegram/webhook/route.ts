@@ -132,12 +132,14 @@ async function recordMessage(message: BusinessMessage, update: TelegramUpdate) {
   // Telegram sends several resolutions of the same photo; the last is largest,
   // which is what the vision pipeline in assistant.ts wants to look at.
   const photoFileId = message.photo?.at(-1)?.file_id ?? null;
+  const hasVoice = Boolean(message.voice);
 
   // Only the customer's side, and only if there is something to work with. A
-  // sticker or a voice note has neither text nor a photo and stays exactly as
-  // silent as it always has. Running the assistant over the seller's own
+  // sticker has neither text, a photo nor a voice note and stays exactly as
+  // silent as it always has — there is nothing to acknowledge and nothing for
+  // the seller to be pinged about. Running the assistant over the seller's own
   // replies would burn a model call to answer a question nobody asked.
-  if (row.direction !== "in" || (!row.text && !photoFileId)) return;
+  if (row.direction !== "in" || (!row.text && !photoFileId && !hasVoice)) return;
 
   const text = row.text ?? "";
   after(async () => {
@@ -149,6 +151,7 @@ async function recordMessage(message: BusinessMessage, update: TelegramUpdate) {
         text,
         senderName: message.from?.first_name ?? null,
         photoFileId,
+        hasVoice,
       });
     } catch (error) {
       // The response went out long ago and the customer is unaffected — they get
