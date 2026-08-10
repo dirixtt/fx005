@@ -311,6 +311,8 @@ export type Database = {
           created_at: string
           direction: string
           id: string
+          intent: string | null
+          intent_data: Json | null
           raw: Json
           telegram_message_id: number | null
           telegram_user_id: number | null
@@ -322,6 +324,8 @@ export type Database = {
           created_at?: string
           direction: string
           id?: string
+          intent?: string | null
+          intent_data?: Json | null
           raw: Json
           telegram_message_id?: number | null
           telegram_user_id?: number | null
@@ -333,6 +337,8 @@ export type Database = {
           created_at?: string
           direction?: string
           id?: string
+          intent?: string | null
+          intent_data?: Json | null
           raw?: Json
           telegram_message_id?: number | null
           telegram_user_id?: number | null

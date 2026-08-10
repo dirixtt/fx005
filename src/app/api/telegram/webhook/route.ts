@@ -1,13 +1,17 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
+import { classifyIntent } from "@/lib/telegram/intent";
 import { buildMessageRow } from "@/lib/telegram/message";
 import type { BusinessConnection, BusinessMessage, TelegramUpdate } from "@/lib/telegram/types";
 
 /**
- * Telegram Business webhook — Step 1: observe and record, nothing else.
+ * Telegram Business webhook — observe, record, and (Step 3) classify.
  *
- * No replies, no intent handling, no order creation. The point is to confirm the
- * Business API integration genuinely works before any logic is built on it.
+ * Still no replies and no order creation: the classifier's verdict is written to
+ * telegram_messages and read by nobody but us. That is the point. It lets the
+ * intent recognition be measured against real customers before Step 4 gives it a
+ * voice, and a misclassification at this stage costs a wrong row, not a wrong
+ * answer to a paying customer.
  */
 
 // The service-role client must never be bundled for the edge/browser.
@@ -98,14 +102,45 @@ async function recordMessage(message: BusinessMessage, update: TelegramUpdate) {
 
   const row = buildMessageRow(message, update, connectionOwnerId);
 
-  const { error } = await supabase.from("telegram_messages").insert({
-    ...row,
-    raw: JSON.parse(JSON.stringify(row.raw)) as never,
-  });
+  const { data: inserted, error } = await supabase
+    .from("telegram_messages")
+    .insert({
+      ...row,
+      raw: JSON.parse(JSON.stringify(row.raw)) as never,
+    })
+    .select("id")
+    .single();
 
   if (error) throw new Error(`insert telegram_messages: ${error.message}`);
 
   console.info(
     `[telegram] ${row.direction} chat=${row.chat_id} text=${JSON.stringify(row.text ?? "")}`,
   );
+
+  // Only the customer's side. Classifying the seller's own replies would burn a
+  // model call to learn nothing.
+  if (row.direction === "in" && row.text) {
+    // Telegram gives a webhook a few seconds before it retries and, if that keeps
+    // failing, disables it. A model call does not fit in that budget, so it runs
+    // after the 200 is already on the wire.
+    after(() => classifyAndStore(inserted.id, row.text as string));
+  }
+}
+
+async function classifyAndStore(messageId: string, text: string) {
+  const intent = await classifyIntent(text);
+
+  const { error } = await createServiceRoleClient()
+    .from("telegram_messages")
+    .update({ intent: intent.kind, intent_data: intent as never })
+    .eq("id", messageId);
+
+  // Nothing to escalate to: the response is long gone and the customer is
+  // unaffected — the seller answers by hand either way, as they do today.
+  if (error) {
+    console.error("[telegram] failed to store intent", messageId, error.message);
+    return;
+  }
+
+  console.info(`[telegram] intent ${intent.kind} msg=${messageId}`);
 }
