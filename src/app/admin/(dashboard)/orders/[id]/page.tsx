@@ -14,7 +14,12 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   const supabase = await createClient();
 
   const [{ data: order }, { data: items }] = await Promise.all([
-    supabase.from("sales").select("*").eq("id", id).eq("channel", "online").maybeSingle(),
+    supabase
+      .from("sales")
+      .select("*")
+      .eq("id", id)
+      .in("channel", ["online", "telegram"])
+      .maybeSingle(),
     supabase.from("sale_items").select("*").eq("sale_id", id),
   ]);
 
@@ -33,6 +38,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
         </Link>
         <div className="mt-1 flex items-center gap-3">
           <h1 className="text-xl font-bold tracking-tight text-neutral-900">Заказ #{order.id.slice(0, 8)}</h1>
+          {order.channel === "telegram" && <Badge variant="secondary">Telegram</Badge>}
           <Badge
             variant={
               order.status === "completed" ? "success" : order.status === "pending" ? "warning" : "destructive"

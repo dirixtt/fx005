@@ -17,10 +17,13 @@ export default async function OrdersPage({
   const supabase = await createClient();
 
   const from = (page - 1) * PAGE_SIZE;
+  // Telegram orders are online orders that arrived through a conversation instead
+  // of the cart. Leaving them out of this list would mean a customer waits for a
+  // call the seller never knew to make.
   const { data: orders, count } = await supabase
     .from("sales")
     .select("*", { count: "exact" })
-    .eq("channel", "online")
+    .in("channel", ["online", "telegram"])
     .order("created_at", { ascending: false })
     .range(from, from + PAGE_SIZE - 1);
 
@@ -55,7 +58,14 @@ export default async function OrdersPage({
             <TableRow key={o.id}>
               <TableCell>{new Date(o.created_at).toLocaleString("ru-RU")}</TableCell>
               <TableCell>
-                {o.customer_name}
+                <span className="flex items-center gap-1.5">
+                  {o.channel === "telegram" && (
+                    <span title="Заявка из Telegram" aria-label="Заявка из Telegram">
+                      💬
+                    </span>
+                  )}
+                  {o.customer_name}
+                </span>
                 <div className="text-xs text-neutral-500">{o.customer_phone}</div>
               </TableCell>
               <TableCell className="font-medium">{formatMoney(o.total)}</TableCell>

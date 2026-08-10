@@ -274,6 +274,47 @@ export type Database = {
           },
         ]
       }
+      telegram_chats: {
+        Row: {
+          business_connection_id: string | null
+          chat_id: number
+          created_at: string
+          draft: Json | null
+          last_product_id: string | null
+          last_reminded_at: string | null
+          state: string
+          updated_at: string
+        }
+        Insert: {
+          business_connection_id?: string | null
+          chat_id: number
+          created_at?: string
+          draft?: Json | null
+          last_product_id?: string | null
+          last_reminded_at?: string | null
+          state?: string
+          updated_at?: string
+        }
+        Update: {
+          business_connection_id?: string | null
+          chat_id?: number
+          created_at?: string
+          draft?: Json | null
+          last_product_id?: string | null
+          last_reminded_at?: string | null
+          state?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "telegram_chats_last_product_id_fkey"
+            columns: ["last_product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       telegram_connections: {
         Row: {
           business_connection_id: string
@@ -381,11 +422,32 @@ export type Database = {
           total: number
         }[]
       }
+      create_telegram_order: {
+        Args: {
+          p_address?: string
+          p_chat_id?: number
+          p_customer_name: string
+          p_customer_phone: string
+          p_quantity: number
+          p_variant_id: string
+        }
+        Returns: string
+      }
+      notify_unanswered: { Args: Record<PropertyKey, never>; Returns: undefined }
       owner_exists: { Args: Record<PropertyKey, never>; Returns: boolean }
+      unanswered_chats: {
+        Args: { p_minutes?: number }
+        Returns: {
+          business_connection_id: string
+          chat_id: number
+          last_text: string
+          waiting_minutes: number
+        }[]
+      }
     }
     Enums: {
       payment_method: "cash" | "card" | "other"
-      sale_channel: "pos" | "online"
+      sale_channel: "pos" | "online" | "telegram"
       sale_status: "pending" | "completed" | "cancelled"
     }
     CompositeTypes: {
@@ -515,7 +577,7 @@ export const Constants = {
   public: {
     Enums: {
       payment_method: ["cash", "card", "other"],
-      sale_channel: ["pos", "online"],
+      sale_channel: ["pos", "online", "telegram"],
       sale_status: ["pending", "completed", "cancelled"],
     },
   },

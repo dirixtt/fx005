@@ -10,6 +10,7 @@ import {
   Users,
   ClipboardList,
   BarChart3,
+  MessagesSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -19,6 +20,7 @@ const navItems = [
   { href: "/admin/inventory", label: "Склад", icon: Boxes },
   { href: "/admin/customers", label: "Клиенты", icon: Users },
   { href: "/admin/orders", label: "Заказы", icon: ClipboardList },
+  { href: "/admin/telegram", label: "Диалоги", icon: MessagesSquare },
   { href: "/admin/reports", label: "Отчёты", icon: BarChart3 },
 ];
 

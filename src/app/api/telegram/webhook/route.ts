@@ -1,17 +1,17 @@
 import { NextResponse, after } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
-import { classifyIntent } from "@/lib/telegram/intent";
+import { handleInboundMessage } from "@/lib/telegram/assistant";
 import { buildMessageRow } from "@/lib/telegram/message";
 import type { BusinessConnection, BusinessMessage, TelegramUpdate } from "@/lib/telegram/types";
 
 /**
- * Telegram Business webhook — observe, record, and (Step 3) classify.
+ * Telegram Business webhook — the entry point for everything the assistant does.
  *
- * Still no replies and no order creation: the classifier's verdict is written to
- * telegram_messages and read by nobody but us. That is the point. It lets the
- * intent recognition be measured against real customers before Step 4 gives it a
- * voice, and a misclassification at this stage costs a wrong row, not a wrong
- * answer to a paying customer.
+ * This route does as little as possible: authenticate, record, acknowledge. The
+ * work happens in `after()`, once the 200 is already on the wire. Telegram gives
+ * a webhook a few seconds before it retries, and disables one that keeps timing
+ * out — and answering a customer takes a model call plus several queries, which
+ * does not fit in that budget.
  */
 
 // The service-role client must never be bundled for the edge/browser.
@@ -104,43 +104,50 @@ async function recordMessage(message: BusinessMessage, update: TelegramUpdate) {
 
   const { data: inserted, error } = await supabase
     .from("telegram_messages")
-    .insert({
-      ...row,
-      raw: JSON.parse(JSON.stringify(row.raw)) as never,
-    })
+    .upsert(
+      {
+        ...row,
+        raw: JSON.parse(JSON.stringify(row.raw)) as never,
+      },
+      // Telegram retries an update it thinks failed, and re-delivers our own sends.
+      // Without this, a retry would run the assistant twice over one question:
+      // two replies to the customer, and mid-purchase, two orders.
+      { onConflict: "chat_id,telegram_message_id", ignoreDuplicates: true },
+    )
     .select("id")
-    .single();
+    .maybeSingle();
 
   if (error) throw new Error(`insert telegram_messages: ${error.message}`);
+
+  // No row back means this exact message is already recorded. Already handled.
+  if (!inserted) {
+    console.info(`[telegram] duplicate ${row.chat_id}/${row.telegram_message_id}, skipped`);
+    return;
+  }
 
   console.info(
     `[telegram] ${row.direction} chat=${row.chat_id} text=${JSON.stringify(row.text ?? "")}`,
   );
 
-  // Only the customer's side. Classifying the seller's own replies would burn a
-  // model call to learn nothing.
-  if (row.direction === "in" && row.text) {
-    // Telegram gives a webhook a few seconds before it retries and, if that keeps
-    // failing, disables it. A model call does not fit in that budget, so it runs
-    // after the 200 is already on the wire.
-    after(() => classifyAndStore(inserted.id, row.text as string));
-  }
-}
+  // Only the customer's side. Running the assistant over the seller's own replies
+  // would burn a model call to answer a question nobody asked.
+  if (row.direction !== "in" || !row.text) return;
 
-async function classifyAndStore(messageId: string, text: string) {
-  const intent = await classifyIntent(text);
-
-  const { error } = await createServiceRoleClient()
-    .from("telegram_messages")
-    .update({ intent: intent.kind, intent_data: intent as never })
-    .eq("id", messageId);
-
-  // Nothing to escalate to: the response is long gone and the customer is
-  // unaffected — the seller answers by hand either way, as they do today.
-  if (error) {
-    console.error("[telegram] failed to store intent", messageId, error.message);
-    return;
-  }
-
-  console.info(`[telegram] intent ${intent.kind} msg=${messageId}`);
+  const text = row.text;
+  after(async () => {
+    try {
+      await handleInboundMessage({
+        messageId: inserted.id,
+        chatId: row.chat_id,
+        businessConnectionId: businessConnectionId,
+        text,
+        senderName: message.from?.first_name ?? null,
+      });
+    } catch (error) {
+      // The response went out long ago and the customer is unaffected — they get
+      // the same silence they would have got before the bot existed, and the
+      // conversation stays on the seller's unanswered list.
+      console.error("[telegram] assistant failed", inserted.id, error);
+    }
+  });
 }
