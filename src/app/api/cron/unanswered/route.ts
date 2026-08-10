@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { notifySeller } from "@/lib/telegram/client";
+import { loadAssistantSettings } from "@/lib/telegram/settings";
 
 /**
  * Step 6 — chase the conversations nobody answered.
@@ -18,7 +19,6 @@ import { notifySeller } from "@/lib/telegram/client";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const DEFAULT_WAIT_MINUTES = 15;
 /** Enough for a busy morning; past this the seller needs the inbox, not a list. */
 const MAX_CHATS_PER_RUN = 10;
 
@@ -34,9 +34,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const minutes = Number(request.nextUrl.searchParams.get("minutes")) || DEFAULT_WAIT_MINUTES;
-
   const supabase = createServiceRoleClient();
+
+  // Query override wins when present, so a manual "check right now with a 5
+  // minute window" still works without touching the seller's saved preference.
+  const queryMinutes = Number(request.nextUrl.searchParams.get("minutes"));
+  const minutes = queryMinutes > 0 ? queryMinutes : (await loadAssistantSettings(supabase)).reminderMinutes;
+
   const { data: chats, error } = await supabase.rpc("unanswered_chats", { p_minutes: minutes });
 
   if (error) {

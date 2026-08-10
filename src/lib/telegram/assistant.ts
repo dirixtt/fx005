@@ -11,6 +11,7 @@ import {
   type CatalogProduct,
 } from "@/lib/telegram/catalog";
 import * as t from "@/lib/telegram/templates";
+import { effectiveLanguage, loadAssistantSettings, withSignature, type AssistantSettings } from "@/lib/telegram/settings";
 import { inStock, priceRange, variantLabel } from "@/lib/variants";
 import { formatMoney } from "@/lib/utils";
 
@@ -25,6 +26,13 @@ import { formatMoney } from "@/lib/utils";
  */
 
 type Client = SupabaseClient<Database>;
+
+/** Bundles what every branch needs so functions stop passing three things at once. */
+type Ctx = {
+  supabase: Client;
+  message: InboundMessage;
+  settings: AssistantSettings;
+};
 
 /** The pending order, held on the chat row while we ask for a name and phone. */
 type Draft = {
@@ -51,6 +59,14 @@ export type InboundMessage = {
 
 export async function handleInboundMessage(message: InboundMessage): Promise<void> {
   const supabase = createServiceRoleClient();
+  const settings = await loadAssistantSettings(supabase);
+
+  // The master switch. Checked before anything else touches the network — a
+  // seller who turned the bot off gets a bot that spends no model calls and
+  // sends no messages, not one that quietly keeps working in the background.
+  if (!settings.enabled) return;
+
+  const ctx: Ctx = { supabase, message, settings };
 
   const { data: chat } = await supabase
     .from("telegram_chats")
@@ -62,27 +78,30 @@ export async function handleInboundMessage(message: InboundMessage): Promise<voi
   // starting a new one. Classifying "Азиз, +998901234567" or a bare phone number
   // would waste a model call to be told it is `other`, and drop the answer.
   if (chat?.state === "awaiting_contact" && chat.draft) {
-    await completeOrder(supabase, message, chat.draft as unknown as Draft);
+    await completeOrder(ctx, chat.draft as unknown as Draft);
     return;
   }
   if (chat?.state === "awaiting_phone_for_status") {
     const language = (chat.draft as unknown as StatusDraft | null)?.language ?? "ru";
-    await answerOrderStatusFromText(supabase, message, language, message.text);
+    await answerOrderStatusFromText(ctx, language, message.text);
     return;
   }
 
-  const intent = await classifyIntent(message.text);
+  const rawIntent = await classifyIntent(message.text, { extraInstructions: settings.extraInstructions });
   await supabase
     .from("telegram_messages")
-    .update({ intent: intent.kind, intent_data: intent as never })
+    .update({ intent: rawIntent.kind, intent_data: rawIntent as never })
     .eq("id", message.messageId);
 
-  await dispatch(supabase, message, intent, chat?.last_product_id ?? null, chat?.customer_phone ?? null);
+  // Applied once, right after classification, so every branch below sees the
+  // language the seller wants used — not the one the classifier merely detected.
+  const intent = { ...rawIntent, language: effectiveLanguage(settings, rawIntent.language) } as Intent;
+
+  await dispatch(ctx, intent, chat?.last_product_id ?? null, chat?.customer_phone ?? null);
 }
 
 async function dispatch(
-  supabase: Client,
-  message: InboundMessage,
+  ctx: Ctx,
   intent: Intent,
   lastProductId: string | null,
   knownPhone: string | null,
@@ -92,32 +111,43 @@ async function dispatch(
   // a guess.
   if (intent.kind === "other") return;
 
+  // Each capability gates its intent the same way an unrecognised message would:
+  // silence, and a line on the seller's unanswered list. There is deliberately no
+  // separate "I can't help with that" template — a disabled capability and a
+  // genuinely unclear message should look identical to the seller, who handles
+  // both by hand either way.
+  if (intent.kind === "check_availability" && !ctx.settings.canAnswerAvailability) return;
+  if (intent.kind === "ask_price" && !ctx.settings.canAnswerPrice) return;
+  if (intent.kind === "place_order" && !ctx.settings.canPlaceOrders) return;
+  if (intent.kind === "check_order_status" && !ctx.settings.canAnswerOrderStatus) return;
+  if (intent.kind === "ask_shop_info" && !ctx.settings.canAnswerShopInfo) return;
+
   // These two are about the shop, not a product — resolving a product first
   // would be wasted work at best and a wrong "which product?" prompt at worst.
   if (intent.kind === "check_order_status") {
     if (knownPhone) {
-      await lookupOrderStatus(supabase, message, intent.language, knownPhone);
+      await lookupOrderStatus(ctx, intent.language, knownPhone);
     } else {
-      await supabase.from("telegram_chats").upsert(
+      await ctx.supabase.from("telegram_chats").upsert(
         {
-          chat_id: message.chatId,
-          business_connection_id: message.businessConnectionId,
+          chat_id: ctx.message.chatId,
+          business_connection_id: ctx.message.businessConnectionId,
           state: "awaiting_phone_for_status",
           draft: { language: intent.language } as never,
           updated_at: new Date().toISOString(),
         },
         { onConflict: "chat_id" },
       );
-      await reply(supabase, message, t.askPhoneForStatusReply(intent.language));
+      await reply(ctx, t.askPhoneForStatusReply(intent.language));
     }
     return;
   }
   if (intent.kind === "ask_shop_info") {
-    await answerShopInfo(supabase, message, intent.language, intent.topic);
+    await answerShopInfo(ctx, intent.language, intent.topic);
     return;
   }
 
-  const resolution = await resolveProduct(supabase, {
+  const resolution = await resolveProduct(ctx.supabase, {
     query: intent.product,
     lastProductId,
   });
@@ -130,31 +160,30 @@ async function dispatch(
   }
 
   if (resolution.status === "ambiguous") {
-    await reply(supabase, message, t.whichProductReply(intent.language, resolution.products.map((p) => p.name)));
+    await reply(ctx, t.whichProductReply(intent.language, resolution.products.map((p) => p.name)));
     return;
   }
 
   const product = resolution.product;
   // Remember it before answering: even a "we don't have that size" reply is
   // context the next message will need.
-  await rememberProduct(supabase, message, product.id);
+  await rememberProduct(ctx, product.id);
 
   switch (intent.kind) {
     case "check_availability":
-      await answerAvailability(supabase, message, intent.language, product, intent.size);
+      await answerAvailability(ctx, intent.language, product, intent.size);
       return;
     case "ask_price":
-      await answerPrice(supabase, message, intent.language, product);
+      await answerPrice(ctx, intent.language, product);
       return;
     case "place_order":
-      await startOrder(supabase, message, intent.language, product, intent.size, intent.quantity);
+      await startOrder(ctx, intent.language, product, intent.size, intent.quantity);
       return;
   }
 }
 
 async function answerAvailability(
-  supabase: Client,
-  message: InboundMessage,
+  ctx: Ctx,
   language: IntentLanguage,
   product: CatalogProduct,
   size: string | null,
@@ -164,50 +193,44 @@ async function answerAvailability(
   if (size) {
     const variant = findVariantBySize(product.variants, size);
     if (variant && variant.stock_quantity > 0) {
-      await reply(supabase, message, t.inStockReply(language, product.name, variant.size, variant.sale_price));
+      await reply(ctx, t.inStockReply(language, product.name, variant.size, variant.sale_price));
     } else {
       // Covers both "that size does not exist" and "it exists but is gone". The
       // customer's next question is the same either way: what *do* you have.
-      await reply(supabase, message, t.outOfSizeReply(language, product.name, size, availableSizes(product.variants)));
+      await reply(ctx, t.outOfSizeReply(language, product.name, size, availableSizes(product.variants)));
     }
     return;
   }
 
   if (available.length === 0) {
-    await reply(supabase, message, t.soldOutReply(language, product.name));
+    await reply(ctx, t.soldOutReply(language, product.name));
     return;
   }
 
   const sizes = availableSizes(product.variants);
   if (sizes.length > 0) {
-    await reply(supabase, message, t.sizesReply(language, product.name, sizes));
+    await reply(ctx, t.sizesReply(language, product.name, sizes));
     return;
   }
 
   // A product with no sizes at all — a bag, a belt, or anything the seller
   // entered as a single variant. "In stock" is the complete answer.
-  await reply(supabase, message, t.inStockReply(language, product.name, null, available[0].sale_price));
+  await reply(ctx, t.inStockReply(language, product.name, null, available[0].sale_price));
 }
 
-async function answerPrice(
-  supabase: Client,
-  message: InboundMessage,
-  language: IntentLanguage,
-  product: CatalogProduct,
-): Promise<void> {
+async function answerPrice(ctx: Ctx, language: IntentLanguage, product: CatalogProduct): Promise<void> {
   const range = priceRange(product.variants);
   if (!range) {
     // No variants at all — a half-entered product. Nothing truthful to quote.
-    await reply(supabase, message, t.soldOutReply(language, product.name));
+    await reply(ctx, t.soldOutReply(language, product.name));
     return;
   }
 
-  await reply(supabase, message, t.priceReply(language, product.name, range.min, range.max));
+  await reply(ctx, t.priceReply(language, product.name, range.min, range.max));
 }
 
 async function startOrder(
-  supabase: Client,
-  message: InboundMessage,
+  ctx: Ctx,
   language: IntentLanguage,
   product: CatalogProduct,
   size: string | null,
@@ -216,14 +239,14 @@ async function startOrder(
   const available = inStock(product.variants);
 
   if (available.length === 0) {
-    await reply(supabase, message, t.soldOutReply(language, product.name));
+    await reply(ctx, t.soldOutReply(language, product.name));
     return;
   }
 
   let variant = size ? findVariantBySize(product.variants, size) : null;
 
   if (size && (!variant || variant.stock_quantity <= 0)) {
-    await reply(supabase, message, t.outOfSizeReply(language, product.name, size, availableSizes(product.variants)));
+    await reply(ctx, t.outOfSizeReply(language, product.name, size, availableSizes(product.variants)));
     return;
   }
 
@@ -233,13 +256,13 @@ async function startOrder(
     if (available.length === 1) {
       variant = available[0];
     } else {
-      await reply(supabase, message, t.whichSizeReply(language, product.name, availableSizes(product.variants)));
+      await reply(ctx, t.whichSizeReply(language, product.name, availableSizes(product.variants)));
       return;
     }
   }
 
   if (variant.stock_quantity < quantity) {
-    await reply(supabase, message, t.outOfSizeReply(language, product.name, variantLabel(variant), availableSizes(product.variants)));
+    await reply(ctx, t.outOfSizeReply(language, product.name, variantLabel(variant), availableSizes(product.variants)));
     return;
   }
 
@@ -254,10 +277,10 @@ async function startOrder(
 
   // Nothing is reserved yet. Stock moves only when the phone number arrives, so
   // an abandoned conversation costs nothing.
-  await supabase.from("telegram_chats").upsert(
+  await ctx.supabase.from("telegram_chats").upsert(
     {
-      chat_id: message.chatId,
-      business_connection_id: message.businessConnectionId,
+      chat_id: ctx.message.chatId,
+      business_connection_id: ctx.message.businessConnectionId,
       state: "awaiting_contact",
       draft: draft as never,
       last_product_id: product.id,
@@ -266,11 +289,7 @@ async function startOrder(
     { onConflict: "chat_id" },
   );
 
-  await reply(
-    supabase,
-    message,
-    t.askContactReply(language, product.name, variant.size, variant.sale_price * quantity),
-  );
+  await reply(ctx, t.askContactReply(language, product.name, variant.size, variant.sale_price * quantity));
 }
 
 /**
@@ -281,40 +300,30 @@ async function startOrder(
  * `askPhoneForStatusReply` and — indirectly, via `lookupOrderStatus` — when the
  * phone is already on file and no parsing is needed at all.
  */
-async function answerOrderStatusFromText(
-  supabase: Client,
-  message: InboundMessage,
-  language: IntentLanguage,
-  text: string,
-): Promise<void> {
+async function answerOrderStatusFromText(ctx: Ctx, language: IntentLanguage, text: string): Promise<void> {
   const phone = parseContact(text).phone;
   if (!phone) {
     // State is left as 'awaiting_phone_for_status'. This is the one place a
     // wrong guess would be actively harmful — reading a stray number as the
     // phone would tell a stranger about someone else's order.
-    await reply(supabase, message, t.phoneUnclearForStatusReply(language));
+    await reply(ctx, t.phoneUnclearForStatusReply(language));
     return;
   }
-  await lookupOrderStatus(supabase, message, language, phone);
+  await lookupOrderStatus(ctx, language, phone);
 }
 
-async function lookupOrderStatus(
-  supabase: Client,
-  message: InboundMessage,
-  language: IntentLanguage,
-  phone: string,
-): Promise<void> {
-  const { data: orders, error } = await supabase.rpc("recent_orders_by_phone", { p_phone: phone });
+async function lookupOrderStatus(ctx: Ctx, language: IntentLanguage, phone: string): Promise<void> {
+  const { data: orders, error } = await ctx.supabase.rpc("recent_orders_by_phone", { p_phone: phone });
 
   // Remembered regardless of whether anything was found: a wrong number typed
   // once should not be re-asked on every later question, and the seller can
   // always see the raw text in /admin/telegram if it needs correcting.
-  await supabase
+  await ctx.supabase
     .from("telegram_chats")
     .upsert(
       {
-        chat_id: message.chatId,
-        business_connection_id: message.businessConnectionId,
+        chat_id: ctx.message.chatId,
+        business_connection_id: ctx.message.businessConnectionId,
         state: "idle",
         draft: null,
         customer_phone: phone,
@@ -329,21 +338,16 @@ async function lookupOrderStatus(
   }
 
   if (!orders || orders.length === 0) {
-    await reply(supabase, message, t.noOrdersFoundReply(language));
+    await reply(ctx, t.noOrdersFoundReply(language));
     return;
   }
 
-  await reply(supabase, message, t.orderStatusReply(language, orders));
+  await reply(ctx, t.orderStatusReply(language, orders));
 }
 
-async function answerShopInfo(
-  supabase: Client,
-  message: InboundMessage,
-  language: IntentLanguage,
-  topic: ShopInfoTopic,
-): Promise<void> {
+async function answerShopInfo(ctx: Ctx, language: IntentLanguage, topic: ShopInfoTopic): Promise<void> {
   if (topic === "delivery") {
-    const { data: zones } = await supabase
+    const { data: zones } = await ctx.supabase
       .from("delivery_zones")
       .select("name, price, eta_days")
       .order("sort_order");
@@ -351,53 +355,49 @@ async function answerShopInfo(
     // No zones configured — the honest reading is that this has not been set up
     // yet, not that delivery costs nothing.
     if (!zones || zones.length === 0) return;
-    await reply(supabase, message, t.deliveryReply(language, zones));
+    await reply(ctx, t.deliveryReply(language, zones));
     return;
   }
 
-  const { data: info } = await supabase.from("shop_info").select("payment_text, hours_text").maybeSingle();
+  const { data: info } = await ctx.supabase.from("shop_info").select("payment_text, hours_text").maybeSingle();
   const text = topic === "payment" ? info?.payment_text : info?.hours_text;
   if (!text) return;
-  await reply(supabase, message, t.shopTextReply(text));
+  await reply(ctx, t.shopTextReply(text));
 }
 
-async function completeOrder(
-  supabase: Client,
-  message: InboundMessage,
-  draft: Draft,
-): Promise<void> {
-  const contact = parseContact(message.text);
+async function completeOrder(ctx: Ctx, draft: Draft): Promise<void> {
+  const contact = parseContact(ctx.message.text);
 
   if (!contact.phone) {
     // The draft is kept. They are mid-purchase; making them start over because
     // they typed their name first is how a sale is lost to friction.
-    await reply(supabase, message, t.contactUnclearReply(draft.language));
+    await reply(ctx, t.contactUnclearReply(draft.language));
     return;
   }
 
   // Telegram already knows what the account is called. Using it beats refusing an
   // order over a missing field the customer thought was obvious.
-  const name = contact.name ?? message.senderName;
+  const name = contact.name ?? ctx.message.senderName;
   if (!name) {
-    await reply(supabase, message, t.contactUnclearReply(draft.language));
+    await reply(ctx, t.contactUnclearReply(draft.language));
     return;
   }
 
-  const { data: orderId, error } = await supabase.rpc("create_telegram_order", {
+  const { data: orderId, error } = await ctx.supabase.rpc("create_telegram_order", {
     p_variant_id: draft.variant_id,
     p_quantity: draft.quantity,
     p_customer_name: name,
     p_customer_phone: contact.phone,
     p_address: contact.address ?? undefined,
-    p_chat_id: message.chatId,
+    p_chat_id: ctx.message.chatId,
   });
 
   if (error || !orderId) {
     // Almost always the last item selling while the customer typed. The chat is
     // released so they are not stuck answering a question that no longer applies.
     console.error("[assistant] create_telegram_order failed", error?.message);
-    await releaseChat(supabase, message.chatId);
-    await reply(supabase, message, t.orderFailedReply(draft.language));
+    await releaseChat(ctx.supabase, ctx.message.chatId);
+    await reply(ctx, t.orderFailedReply(draft.language));
     await notifySeller(
       `⚠️ Не удалось оформить заявку из Telegram\n${draft.product_name}` +
         `${draft.size ? `, ${draft.size}` : ""}\n${name} — ${contact.phone}\n\n` +
@@ -407,7 +407,7 @@ async function completeOrder(
   }
 
   const total = draft.unit_price * draft.quantity;
-  await reply(supabase, message, t.orderCreatedReply(draft.language, draft.product_name, draft.size, total));
+  await reply(ctx, t.orderCreatedReply(draft.language, draft.product_name, draft.size, total));
 
   // The seller is told immediately, not in the nightly digest: someone is waiting
   // for a call.
@@ -421,11 +421,11 @@ async function completeOrder(
 
 // --- Shared plumbing --------------------------------------------------------
 
-async function rememberProduct(supabase: Client, message: InboundMessage, productId: string) {
-  await supabase.from("telegram_chats").upsert(
+async function rememberProduct(ctx: Ctx, productId: string) {
+  await ctx.supabase.from("telegram_chats").upsert(
     {
-      chat_id: message.chatId,
-      business_connection_id: message.businessConnectionId,
+      chat_id: ctx.message.chatId,
+      business_connection_id: ctx.message.businessConnectionId,
       last_product_id: productId,
       updated_at: new Date().toISOString(),
     },
@@ -448,24 +448,25 @@ async function releaseChat(supabase: Client, chatId: number) {
  * reply the bot sent but never recorded would leave an answered conversation
  * nagging the seller forever.
  */
-async function reply(supabase: Client, message: InboundMessage, text: string): Promise<void> {
-  const result = await replyToCustomer(message.chatId, text, message.businessConnectionId);
+async function reply(ctx: Ctx, text: string): Promise<void> {
+  const signed = withSignature(ctx.settings, text);
+  const result = await replyToCustomer(ctx.message.chatId, signed, ctx.message.businessConnectionId);
 
   if (!result.ok) {
     // Not logged as outbound: nothing was delivered, so the conversation really is
     // still unanswered and should stay on the seller's list.
-    console.error("[assistant] reply failed", message.chatId, result.error);
+    console.error("[assistant] reply failed", ctx.message.chatId, result.error);
     return;
   }
 
-  await supabase.from("telegram_messages").upsert(
+  await ctx.supabase.from("telegram_messages").upsert(
     {
-      business_connection_id: message.businessConnectionId,
-      chat_id: message.chatId,
+      business_connection_id: ctx.message.businessConnectionId,
+      chat_id: ctx.message.chatId,
       telegram_user_id: null,
       telegram_message_id: result.messageId,
       direction: "out",
-      text,
+      text: signed,
       raw: { source: "assistant" } as never,
     },
     // Telegram echoes our own sends back through the webhook; whichever write

@@ -12,6 +12,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      assistant_settings: {
+        Row: {
+          can_answer_availability: boolean
+          can_answer_order_status: boolean
+          can_answer_price: boolean
+          can_answer_shop_info: boolean
+          can_place_orders: boolean
+          enabled: boolean
+          extra_instructions: string | null
+          id: boolean
+          language_mode: string
+          reminder_minutes: number
+          signature: string | null
+          updated_at: string
+        }
+        Insert: {
+          can_answer_availability?: boolean
+          can_answer_order_status?: boolean
+          can_answer_price?: boolean
+          can_answer_shop_info?: boolean
+          can_place_orders?: boolean
+          enabled?: boolean
+          extra_instructions?: string | null
+          id?: boolean
+          language_mode?: string
+          reminder_minutes?: number
+          signature?: string | null
+          updated_at?: string
+        }
+        Update: {
+          can_answer_availability?: boolean
+          can_answer_order_status?: boolean
+          can_answer_price?: boolean
+          can_answer_shop_info?: boolean
+          can_place_orders?: boolean
+          enabled?: boolean
+          extra_instructions?: string | null
+          id?: boolean
+          language_mode?: string
+          reminder_minutes?: number
+          signature?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       categories: {
         Row: {
           created_at: string

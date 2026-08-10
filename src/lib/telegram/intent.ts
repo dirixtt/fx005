@@ -374,6 +374,19 @@ export type ClassifyOptions = {
   /** Overridable so tests can inject a stub without touching the network. */
   client?: Anthropic;
   signal?: AbortSignal;
+  /**
+   * The seller's own notes on how their customers write — 'кроссовки называют
+   * кедами', 'артикулы у нас четырёхзначные' — configured in
+   * /admin/settings/assistant and appended to the system prompt verbatim.
+   *
+   * Recognition-only, and that boundary is enforced by construction, not by
+   * convention: this string can only ever change which tool the model calls and
+   * what it copies into the arguments. It has no path to customer-facing text —
+   * that is still assembled entirely in templates.ts from database values. A
+   * seller cannot use this field to make the bot say something untrue, only to
+   * help it understand something true.
+   */
+  extraInstructions?: string | null;
 };
 
 /**
@@ -392,13 +405,17 @@ export async function classifyIntent(text: string | null, options: ClassifyOptio
     return otherIntent("unavailable", "ассистент не настроен");
   }
 
+  const system = options.extraInstructions?.trim()
+    ? `${SYSTEM_PROMPT}\n\nДополнительно от продавца, только для распознавания:\n${options.extraInstructions.trim()}`
+    : SYSTEM_PROMPT;
+
   let response: Anthropic.Message;
   try {
     response = await anthropic.messages.create(
       {
         model: MODEL,
         max_tokens: 1024,
-        system: SYSTEM_PROMPT,
+        system,
         // Classification is a single judgement call, not a chain of reasoning,
         // and a customer is waiting.
         output_config: { effort: "low" },
