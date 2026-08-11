@@ -9,6 +9,7 @@ import {
   type VariantFormValues,
 } from "@/lib/validation/product";
 import { slugify } from "@/lib/utils";
+import { requireCurrentStore } from "@/lib/stores/current-store";
 
 export type ActionState = { error?: string } | undefined;
 
@@ -24,9 +25,10 @@ function parseForm(formData: FormData) {
 }
 
 /** Empty strings from the form become NULL, so "no size" is one value, not two. */
-function variantRow(variant: VariantFormValues, productId: string) {
+function variantRow(variant: VariantFormValues, productId: string, storeId: string) {
   return {
     product_id: productId,
+    store_id: storeId,
     size: variant.size || null,
     color: variant.color || null,
     sku: variant.sku || null,
@@ -44,6 +46,7 @@ export async function createProduct(_prevState: ActionState, formData: FormData)
     return { error: parsed.error.issues[0]?.message ?? "Проверьте поля формы" };
   }
 
+  const store = await requireCurrentStore();
   const supabase = await createClient();
   const slugBase = slugify(parsed.data.name) || "tovar";
   const slug = `${slugBase}-${Math.random().toString(36).slice(2, 7)}`;
@@ -51,6 +54,7 @@ export async function createProduct(_prevState: ActionState, formData: FormData)
   const { data: product, error } = await supabase
     .from("products")
     .insert({
+      store_id: store.id,
       name: parsed.data.name,
       category_id: parsed.data.category_id || null,
       description: parsed.data.description || null,
@@ -65,7 +69,7 @@ export async function createProduct(_prevState: ActionState, formData: FormData)
 
   const { error: variantError } = await supabase
     .from("product_variants")
-    .insert(parsed.data.variants.map((v) => variantRow(v, product.id)));
+    .insert(parsed.data.variants.map((v) => variantRow(v, product.id, store.id)));
 
   if (variantError) {
     // Without this the catalogue would keep a product that has nothing to sell:
@@ -88,6 +92,7 @@ export async function updateProduct(
     return { error: parsed.error.issues[0]?.message ?? "Проверьте поля формы" };
   }
 
+  const store = await requireCurrentStore();
   const supabase = await createClient();
 
   const { error } = await supabase
@@ -131,7 +136,7 @@ export async function updateProduct(
   for (const variant of existing) {
     const { error: updateError } = await supabase
       .from("product_variants")
-      .update(variantRow(variant, id))
+      .update(variantRow(variant, id, store.id))
       .eq("id", variant.id!);
     if (updateError) return { error: updateError.message };
   }
@@ -139,7 +144,7 @@ export async function updateProduct(
   if (added.length > 0) {
     const { error: insertError } = await supabase
       .from("product_variants")
-      .insert(added.map((v) => variantRow(v, id)));
+      .insert(added.map((v) => variantRow(v, id, store.id)));
     if (insertError) return { error: insertError.message };
   }
 

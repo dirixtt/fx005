@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { requireCurrentStore } from "@/lib/stores/current-store";
 
 export type ActionState = { error?: string } | undefined;
 
@@ -24,6 +25,7 @@ export async function updateAssistantSettings(_prevState: ActionState, formData:
 
   // Checkboxes send "on" when checked and are simply absent from FormData when
   // not — there is no unchecked value to read.
+  const store = await requireCurrentStore();
   const supabase = await createClient();
   const { error } = await supabase
     .from("assistant_settings")
@@ -42,7 +44,7 @@ export async function updateAssistantSettings(_prevState: ActionState, formData:
       extra_instructions: extraInstructions || null,
       updated_at: new Date().toISOString(),
     })
-    .eq("id", true);
+    .eq("store_id", store.id);
 
   if (error) return { error: error.message };
 
@@ -54,6 +56,7 @@ export async function updateShopInfo(_prevState: ActionState, formData: FormData
   const paymentText = String(formData.get("payment_text") || "").trim();
   const hoursText = String(formData.get("hours_text") || "").trim();
 
+  const store = await requireCurrentStore();
   const supabase = await createClient();
   const { error } = await supabase
     .from("shop_info")
@@ -62,7 +65,7 @@ export async function updateShopInfo(_prevState: ActionState, formData: FormData
       hours_text: hoursText || null,
       updated_at: new Date().toISOString(),
     })
-    .eq("id", true);
+    .eq("store_id", store.id);
 
   if (error) return { error: error.message };
 
@@ -78,11 +81,16 @@ export async function addDeliveryZone(_prevState: ActionState, formData: FormDat
   if (!name) return { error: "Укажите название зоны." };
   if (!Number.isFinite(price) || price < 0) return { error: "Цена должна быть числом не меньше нуля." };
 
+  const store = await requireCurrentStore();
   const supabase = await createClient();
 
-  const { count } = await supabase.from("delivery_zones").select("*", { count: "exact", head: true });
+  const { count } = await supabase
+    .from("delivery_zones")
+    .select("*", { count: "exact", head: true })
+    .eq("store_id", store.id);
 
   const { error } = await supabase.from("delivery_zones").insert({
+    store_id: store.id,
     name,
     price,
     eta_days: etaDays || null,

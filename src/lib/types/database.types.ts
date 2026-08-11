@@ -809,6 +809,10 @@ export type Database = {
         }
         Returns: string
       }
+      create_store: {
+        Args: { p_name: string; p_slug: string }
+        Returns: string
+      }
       create_telegram_order: {
         Args: {
           p_address?: string
