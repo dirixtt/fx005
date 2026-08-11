@@ -89,12 +89,13 @@ export function availableSizes(variants: VariantLike[]): string[] {
 
 type Client = SupabaseClient<Database>;
 
-async function loadProducts(supabase: Client, ids: string[]): Promise<CatalogProduct[]> {
+async function loadProducts(supabase: Client, storeId: string, ids: string[]): Promise<CatalogProduct[]> {
   if (ids.length === 0) return [];
 
   const { data, error } = await supabase
     .from("products")
     .select(`id, name, product_variants (${VARIANT_COLUMNS})`)
+    .eq("store_id", storeId)
     .in("id", ids)
     .eq("is_active", true);
 
@@ -111,7 +112,7 @@ async function loadProducts(supabase: Client, ids: string[]): Promise<CatalogPro
 }
 
 /** Searches by product name, and by variant SKU or barcode for quoted articles. */
-async function searchProductIds(supabase: Client, term: string): Promise<string[]> {
+async function searchProductIds(supabase: Client, storeId: string, term: string): Promise<string[]> {
   // Resellers quote article numbers constantly ("1024 bormi"), and those live on
   // the variant, not the product. Only a single token can be a code, which also
   // keeps the term out of PostgREST's comma-separated `or` grammar entirely.
@@ -121,18 +122,25 @@ async function searchProductIds(supabase: Client, term: string): Promise<string[
     supabase
       .from("products")
       .select("id")
+      .eq("store_id", storeId)
       .eq("is_active", true)
       .ilike("name", `%${term}%`)
       .limit(MAX_MATCHES + 1),
     // Exact match, not partial: a SKU that merely contains "1024" is a different
     // article, and offering it would be the bot inventing a match.
     code
-      ? supabase.from("product_variants").select("product_id").eq("sku", code).limit(MAX_MATCHES + 1)
+      ? supabase
+          .from("product_variants")
+          .select("product_id")
+          .eq("store_id", storeId)
+          .eq("sku", code)
+          .limit(MAX_MATCHES + 1)
       : null,
     code
       ? supabase
           .from("product_variants")
           .select("product_id")
+          .eq("store_id", storeId)
           .eq("barcode", code)
           .limit(MAX_MATCHES + 1)
       : null,
@@ -154,20 +162,21 @@ async function searchProductIds(supabase: Client, term: string): Promise<string[
  */
 export async function resolveProduct(
   supabase: Client,
+  storeId: string,
   options: { query: string | null; lastProductId: string | null },
 ): Promise<ProductResolution> {
   const term = sanitizeSearchTerm(options.query);
 
   if (term) {
-    const ids = await searchProductIds(supabase, term);
+    const ids = await searchProductIds(supabase, storeId, term);
 
     if (ids.length === 1) {
-      const [product] = await loadProducts(supabase, ids);
+      const [product] = await loadProducts(supabase, storeId, ids);
       if (product) return { status: "resolved", product };
     }
 
     if (ids.length > 1) {
-      const products = await loadProducts(supabase, ids.slice(0, MAX_MATCHES));
+      const products = await loadProducts(supabase, storeId, ids.slice(0, MAX_MATCHES));
       // One survivor after the is_active filter is still an unambiguous answer.
       if (products.length === 1) return { status: "resolved", product: products[0] };
       if (products.length > 1) return { status: "ambiguous", products };
@@ -177,7 +186,7 @@ export async function resolveProduct(
   // Either they named nothing, or they named something the catalogue does not
   // have. Both fall back to what this conversation was already about.
   if (options.lastProductId) {
-    const [product] = await loadProducts(supabase, [options.lastProductId]);
+    const [product] = await loadProducts(supabase, storeId, [options.lastProductId]);
     if (product) return { status: "resolved", product };
   }
 
@@ -236,7 +245,7 @@ const COLOR_TERMS: Record<PhotoColor, string[]> = {
 
 type NamedProduct = { id: string; name: string };
 
-async function searchProductsByCategory(supabase: Client, terms: string[]): Promise<NamedProduct[]> {
+async function searchProductsByCategory(supabase: Client, storeId: string, terms: string[]): Promise<NamedProduct[]> {
   if (terms.length === 0) return [];
 
   // The terms come from CATEGORY_TERMS, a fixed list this module owns — not from
@@ -245,6 +254,7 @@ async function searchProductsByCategory(supabase: Client, terms: string[]): Prom
   const { data } = await supabase
     .from("products")
     .select("id, name")
+    .eq("store_id", storeId)
     .eq("is_active", true)
     .or(terms.map((term) => `name.ilike.%${term}%`).join(","))
     .limit(MAX_MATCHES * 3);
@@ -272,18 +282,19 @@ export function filterByColorTerms(candidates: NamedProduct[], colorTerms: strin
 /** Turns a photo's visual attributes into a catalogue search. */
 export async function resolveProductByAttributes(
   supabase: Client,
+  storeId: string,
   attributes: PhotoAttributes,
 ): Promise<ProductResolution> {
   const categoryTerms = CATEGORY_TERMS[attributes.category];
   if (categoryTerms.length === 0) return { status: "unknown" };
 
-  const candidates = await searchProductsByCategory(supabase, categoryTerms);
+  const candidates = await searchProductsByCategory(supabase, storeId, categoryTerms);
   if (candidates.length === 0) return { status: "unknown" };
 
   const colorTerms = attributes.colors.flatMap((color) => COLOR_TERMS[color]);
   const narrowed = filterByColorTerms(candidates, colorTerms);
 
-  const products = await loadProducts(supabase, narrowed.slice(0, MAX_MATCHES).map((p) => p.id));
+  const products = await loadProducts(supabase, storeId, narrowed.slice(0, MAX_MATCHES).map((p) => p.id));
   if (products.length === 1) return { status: "resolved", product: products[0] };
   if (products.length > 1) return { status: "ambiguous", products };
   return { status: "unknown" };

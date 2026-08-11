@@ -12,6 +12,7 @@ import {
   BarChart3,
   MessagesSquare,
   Settings,
+  Link2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -22,6 +23,7 @@ const navItems = [
   { href: "/admin/customers", label: "Клиенты", icon: Users },
   { href: "/admin/orders", label: "Заказы", icon: ClipboardList },
   { href: "/admin/telegram", label: "Диалоги", icon: MessagesSquare },
+  { href: "/admin/settings/telegram", label: "Подключение Telegram", icon: Link2 },
   { href: "/admin/settings/assistant", label: "Настройки бота", icon: Settings },
   { href: "/admin/reports", label: "Отчёты", icon: BarChart3 },
 ];

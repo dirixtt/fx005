@@ -39,7 +39,7 @@ describe("resolveDirection", () => {
 
 describe("buildMessageRow", () => {
   it("maps a customer question onto the row shape", () => {
-    const row = buildMessageRow(message({ text: "42 bormi?" }), update, SELLER);
+    const row = buildMessageRow(message({ text: "42 bormi?" }), update, SELLER, "store-1");
 
     expect(row).toMatchObject({
       business_connection_id: "conn-1",
@@ -48,6 +48,7 @@ describe("buildMessageRow", () => {
       telegram_message_id: 1,
       direction: "in",
       text: "42 bormi?",
+      store_id: "store-1",
     });
   });
 

@@ -54,8 +54,13 @@ export const DEFAULT_SETTINGS: AssistantSettings = {
 
 export async function loadAssistantSettings(
   supabase: SupabaseClient<Database>,
+  storeId: string,
 ): Promise<AssistantSettings> {
-  const { data, error } = await supabase.from("assistant_settings").select("*").maybeSingle();
+  const { data, error } = await supabase
+    .from("assistant_settings")
+    .select("*")
+    .eq("store_id", storeId)
+    .maybeSingle();
 
   if (error || !data) {
     if (error) console.error("[settings] failed to load assistant_settings", error.message);
@@ -76,6 +81,25 @@ export async function loadAssistantSettings(
     signature: data.signature,
     extraInstructions: data.extra_instructions,
   };
+}
+
+/**
+ * Where a store's operational alerts go — the seller's own chat with the bot,
+ * set once by the Telegram linking flow (see the webhook route). Null means
+ * the seller hasn't finished linking yet; callers skip the send rather than
+ * treating a missing destination as an error.
+ */
+export async function loadNotifyChatId(
+  supabase: SupabaseClient<Database>,
+  storeId: string,
+): Promise<number | null> {
+  const { data } = await supabase
+    .from("shop_info")
+    .select("notify_chat_id")
+    .eq("store_id", storeId)
+    .maybeSingle();
+
+  return data?.notify_chat_id ?? null;
 }
 
 /** Applies the language override, when one is configured, to a reply's language. */

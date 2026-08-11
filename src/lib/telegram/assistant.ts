@@ -13,7 +13,13 @@ import {
   type ProductResolution,
 } from "@/lib/telegram/catalog";
 import * as t from "@/lib/telegram/templates";
-import { effectiveLanguage, loadAssistantSettings, withSignature, type AssistantSettings } from "@/lib/telegram/settings";
+import {
+  effectiveLanguage,
+  loadAssistantSettings,
+  loadNotifyChatId,
+  withSignature,
+  type AssistantSettings,
+} from "@/lib/telegram/settings";
 import { describePhoto } from "@/lib/telegram/vision";
 import { inStock, priceRange, variantLabel } from "@/lib/variants";
 import { formatMoney } from "@/lib/utils";
@@ -40,6 +46,7 @@ type Ctx = {
   supabase: Client;
   message: InboundMessage;
   settings: AssistantSettings;
+  storeId: string;
 };
 
 /** The pending order, held on the chat row while we ask for a name and phone. */
@@ -59,7 +66,13 @@ export type InboundMessage = {
   /** telegram_messages.id of the row just written for this message. */
   messageId: string;
   chatId: number;
-  businessConnectionId: string | null;
+  /**
+   * Required, not optional: handleInboundMessage is only ever reached from the
+   * business-message path (see the webhook route), which always carries one —
+   * a plain, non-Business chat with the bot is handled entirely separately, as
+   * the Telegram account linking flow, and never reaches this function.
+   */
+  businessConnectionId: string;
   /** Empty for a photo sent with no caption — see handleInboundMessage. */
   text: string;
   /** The Telegram account name, used when a customer sends a phone with no name. */
@@ -68,22 +81,25 @@ export type InboundMessage = {
   photoFileId: string | null;
   /** True for a voice note. There is no transcription pipeline — see types.ts. */
   hasVoice: boolean;
+  /** Resolved from telegram_connections by the webhook before this is called. */
+  storeId: string;
 };
 
 export async function handleInboundMessage(message: InboundMessage): Promise<void> {
   const supabase = createServiceRoleClient();
-  const settings = await loadAssistantSettings(supabase);
+  const settings = await loadAssistantSettings(supabase, message.storeId);
 
   // The master switch. Checked before anything else touches the network — a
   // seller who turned the bot off gets a bot that spends no model calls and
   // sends no messages, not one that quietly keeps working in the background.
   if (!settings.enabled) return;
 
-  const ctx: Ctx = { supabase, message, settings };
+  const ctx: Ctx = { supabase, message, settings, storeId: message.storeId };
 
   const { data: chat } = await supabase
     .from("telegram_chats")
     .select("chat_id, state, draft, last_product_id, customer_phone")
+    .eq("business_connection_id", message.businessConnectionId)
     .eq("chat_id", message.chatId)
     .maybeSingle();
 
@@ -188,11 +204,12 @@ async function dispatch(
         {
           chat_id: ctx.message.chatId,
           business_connection_id: ctx.message.businessConnectionId,
+          store_id: ctx.storeId,
           state: "awaiting_phone_for_status",
           draft: { language: intent.language } as never,
           updated_at: new Date().toISOString(),
         },
-        { onConflict: "chat_id" },
+        { onConflict: "business_connection_id,chat_id" },
       );
       await reply(ctx, t.askPhoneForStatusReply(intent.language));
     }
@@ -203,7 +220,7 @@ async function dispatch(
     return;
   }
 
-  let resolution = await resolveProduct(ctx.supabase, {
+  let resolution = await resolveProduct(ctx.supabase, ctx.storeId, {
     query: intent.product,
     lastProductId,
   });
@@ -214,7 +231,7 @@ async function dispatch(
   // a photo match is answered exactly like a text match: same templates, same
   // "remember this product" bookkeeping, no separate code path to keep in sync.
   if (resolution.status === "unknown" && ctx.message.photoFileId && ctx.settings.canMatchPhotos) {
-    resolution = await resolveFromPhoto(ctx.supabase, ctx.message.photoFileId);
+    resolution = await resolveFromPhoto(ctx.supabase, ctx.storeId, ctx.message.photoFileId);
   }
 
   if (resolution.status === "unknown") {
@@ -258,14 +275,14 @@ async function dispatch(
  * the customer "I don't understand your photo" — the seller sees the photo
  * themselves in /admin/telegram and answers it directly.
  */
-async function resolveFromPhoto(supabase: Client, fileId: string): Promise<ProductResolution> {
+async function resolveFromPhoto(supabase: Client, storeId: string, fileId: string): Promise<ProductResolution> {
   const photo = await downloadPhoto(fileId);
   if (!photo) return { status: "unknown" };
 
   const attributes = await describePhoto(photo.base64, photo.mediaType);
   if (!attributes) return { status: "unknown" };
 
-  return resolveProductByAttributes(supabase, attributes);
+  return resolveProductByAttributes(supabase, storeId, attributes);
 }
 
 async function answerAvailability(
@@ -367,12 +384,13 @@ async function startOrder(
     {
       chat_id: ctx.message.chatId,
       business_connection_id: ctx.message.businessConnectionId,
+      store_id: ctx.storeId,
       state: "awaiting_contact",
       draft: draft as never,
       last_product_id: product.id,
       updated_at: new Date().toISOString(),
     },
-    { onConflict: "chat_id" },
+    { onConflict: "business_connection_id,chat_id" },
   );
 
   await reply(ctx, t.askContactReply(language, product.name, variant.size, variant.sale_price * quantity));
@@ -399,7 +417,10 @@ async function answerOrderStatusFromText(ctx: Ctx, language: IntentLanguage, tex
 }
 
 async function lookupOrderStatus(ctx: Ctx, language: IntentLanguage, phone: string): Promise<void> {
-  const { data: orders, error } = await ctx.supabase.rpc("recent_orders_by_phone", { p_phone: phone });
+  const { data: orders, error } = await ctx.supabase.rpc("recent_orders_by_phone", {
+    p_store_id: ctx.storeId,
+    p_phone: phone,
+  });
 
   // Remembered regardless of whether anything was found: a wrong number typed
   // once should not be re-asked on every later question, and the seller can
@@ -410,12 +431,13 @@ async function lookupOrderStatus(ctx: Ctx, language: IntentLanguage, phone: stri
       {
         chat_id: ctx.message.chatId,
         business_connection_id: ctx.message.businessConnectionId,
+        store_id: ctx.storeId,
         state: "idle",
         draft: null,
         customer_phone: phone,
         updated_at: new Date().toISOString(),
       },
-      { onConflict: "chat_id" },
+      { onConflict: "business_connection_id,chat_id" },
     );
 
   if (error) {
@@ -437,6 +459,7 @@ async function answerShopInfo(ctx: Ctx, language: IntentLanguage, topic: ShopInf
     const { data: zones } = await ctx.supabase
       .from("delivery_zones")
       .select("name, price, eta_days")
+      .eq("store_id", ctx.storeId)
       .order("sort_order");
 
     // No zones configured — the honest reading is that this has not been set up
@@ -449,7 +472,11 @@ async function answerShopInfo(ctx: Ctx, language: IntentLanguage, topic: ShopInf
     return;
   }
 
-  const { data: info } = await ctx.supabase.from("shop_info").select("payment_text, hours_text").maybeSingle();
+  const { data: info } = await ctx.supabase
+    .from("shop_info")
+    .select("payment_text, hours_text")
+    .eq("store_id", ctx.storeId)
+    .maybeSingle();
   const text = topic === "payment" ? info?.payment_text : info?.hours_text;
   if (!text) {
     await notifyUnhandled(ctx, language);
@@ -477,6 +504,7 @@ async function completeOrder(ctx: Ctx, draft: Draft): Promise<void> {
   }
 
   const { data: orderId, error } = await ctx.supabase.rpc("create_telegram_order", {
+    p_store_id: ctx.storeId,
     p_variant_id: draft.variant_id,
     p_quantity: draft.quantity,
     p_customer_name: name,
@@ -485,17 +513,22 @@ async function completeOrder(ctx: Ctx, draft: Draft): Promise<void> {
     p_chat_id: ctx.message.chatId,
   });
 
+  const notifyChatId = await loadNotifyChatId(ctx.supabase, ctx.storeId);
+
   if (error || !orderId) {
     // Almost always the last item selling while the customer typed. The chat is
     // released so they are not stuck answering a question that no longer applies.
     console.error("[assistant] create_telegram_order failed", error?.message);
-    await releaseChat(ctx.supabase, ctx.message.chatId);
+    await releaseChat(ctx.supabase, ctx.message.businessConnectionId, ctx.message.chatId);
     await reply(ctx, t.orderFailedReply(draft.language));
-    await notifySeller(
-      `⚠️ Не удалось оформить заявку из Telegram\n${draft.product_name}` +
-        `${draft.size ? `, ${draft.size}` : ""}\n${name} — ${contact.phone}\n\n` +
-        `Причина: ${error?.message ?? "неизвестна"}`,
-    );
+    if (notifyChatId) {
+      await notifySeller(
+        notifyChatId,
+        `⚠️ Не удалось оформить заявку из Telegram\n${draft.product_name}` +
+          `${draft.size ? `, ${draft.size}` : ""}\n${name} — ${contact.phone}\n\n` +
+          `Причина: ${error?.message ?? "неизвестна"}`,
+      );
+    }
     return;
   }
 
@@ -504,12 +537,15 @@ async function completeOrder(ctx: Ctx, draft: Draft): Promise<void> {
 
   // The seller is told immediately, not in the nightly digest: someone is waiting
   // for a call.
-  await notifySeller(
-    `🛒 Новая заявка из Telegram\n\n` +
-      `${draft.product_name}${draft.size ? `, ${draft.size}` : ""} × ${draft.quantity}\n` +
-      `${formatMoney(total)}\n\n` +
-      `${name}\n${contact.phone}${contact.address ? `\n${contact.address}` : ""}`,
-  );
+  if (notifyChatId) {
+    await notifySeller(
+      notifyChatId,
+      `🛒 Новая заявка из Telegram\n\n` +
+        `${draft.product_name}${draft.size ? `, ${draft.size}` : ""} × ${draft.quantity}\n` +
+        `${formatMoney(total)}\n\n` +
+        `${name}\n${contact.phone}${contact.address ? `\n${contact.address}` : ""}`,
+    );
+  }
 }
 
 // --- Shared plumbing --------------------------------------------------------
@@ -519,17 +555,19 @@ async function rememberProduct(ctx: Ctx, productId: string) {
     {
       chat_id: ctx.message.chatId,
       business_connection_id: ctx.message.businessConnectionId,
+      store_id: ctx.storeId,
       last_product_id: productId,
       updated_at: new Date().toISOString(),
     },
-    { onConflict: "chat_id" },
+    { onConflict: "business_connection_id,chat_id" },
   );
 }
 
-async function releaseChat(supabase: Client, chatId: number) {
+async function releaseChat(supabase: Client, businessConnectionId: string, chatId: number) {
   await supabase
     .from("telegram_chats")
     .update({ state: "idle", draft: null, updated_at: new Date().toISOString() })
+    .eq("business_connection_id", businessConnectionId)
     .eq("chat_id", chatId);
 }
 
@@ -556,6 +594,7 @@ async function reply(ctx: Ctx, text: string): Promise<void> {
     {
       business_connection_id: ctx.message.businessConnectionId,
       chat_id: ctx.message.chatId,
+      store_id: ctx.storeId,
       telegram_user_id: null,
       telegram_message_id: result.messageId,
       direction: "out",
@@ -564,7 +603,7 @@ async function reply(ctx: Ctx, text: string): Promise<void> {
     },
     // Telegram echoes our own sends back through the webhook; whichever write
     // lands second is a no-op rather than an error.
-    { onConflict: "chat_id,telegram_message_id", ignoreDuplicates: true },
+    { onConflict: "business_connection_id,chat_id,telegram_message_id", ignoreDuplicates: true },
   );
 }
 
@@ -590,13 +629,14 @@ async function replyAck(ctx: Ctx, text: string): Promise<void> {
     {
       business_connection_id: ctx.message.businessConnectionId,
       chat_id: ctx.message.chatId,
+      store_id: ctx.storeId,
       telegram_user_id: null,
       telegram_message_id: result.messageId,
       direction: "out",
       text: signed,
       raw: { source: "assistant_ack" } as never,
     },
-    { onConflict: "chat_id,telegram_message_id", ignoreDuplicates: true },
+    { onConflict: "business_connection_id,chat_id,telegram_message_id", ignoreDuplicates: true },
   );
 }
 
@@ -620,6 +660,7 @@ async function notifyUnhandled(ctx: Ctx, language: IntentLanguage, previewOverri
   const { data: chat } = await ctx.supabase
     .from("telegram_chats")
     .select("last_ack_notified_at")
+    .eq("business_connection_id", ctx.message.businessConnectionId)
     .eq("chat_id", ctx.message.chatId)
     .maybeSingle();
 
@@ -627,18 +668,23 @@ async function notifyUnhandled(ctx: Ctx, language: IntentLanguage, previewOverri
   const lastPing = chat?.last_ack_notified_at ? new Date(chat.last_ack_notified_at).getTime() : 0;
   if (now - lastPing < ACK_NOTIFY_THROTTLE_MS) return;
 
-  const preview = (previewOverride ?? ctx.message.text ?? "").replace(/\s+/g, " ").trim().slice(0, 120);
-  await notifySeller(
-    `🔔 Бот не смог ответить сам\n\n«${preview || "без текста"}»\n\nЧат #${ctx.message.chatId} — /admin/telegram`,
-  );
+  const notifyChatId = await loadNotifyChatId(ctx.supabase, ctx.storeId);
+  if (notifyChatId) {
+    const preview = (previewOverride ?? ctx.message.text ?? "").replace(/\s+/g, " ").trim().slice(0, 120);
+    await notifySeller(
+      notifyChatId,
+      `🔔 Бот не смог ответить сам\n\n«${preview || "без текста"}»\n\nЧат #${ctx.message.chatId} — /admin/telegram`,
+    );
+  }
 
   await ctx.supabase.from("telegram_chats").upsert(
     {
       chat_id: ctx.message.chatId,
       business_connection_id: ctx.message.businessConnectionId,
+      store_id: ctx.storeId,
       last_ack_notified_at: new Date(now).toISOString(),
       updated_at: new Date(now).toISOString(),
     },
-    { onConflict: "chat_id" },
+    { onConflict: "business_connection_id,chat_id" },
   );
 }

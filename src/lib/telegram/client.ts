@@ -76,11 +76,16 @@ export function replyToCustomer(
   });
 }
 
-/** Sends an operational alert to the shop owner's chat with the bot. */
-export function notifySeller(text: string): Promise<SendResult> {
-  const chatId = process.env.TELEGRAM_CHAT_ID;
-  if (!chatId) return Promise.resolve({ ok: false, error: "TELEGRAM_CHAT_ID is not configured" });
-
+/**
+ * Sends an operational alert to a seller's own chat with the bot.
+ *
+ * Takes the chat id explicitly rather than reading a single global env var —
+ * each store has its own seller, and `shop_info.notify_chat_id` (set by the
+ * Telegram linking flow, see the webhook route) is where that chat id lives
+ * now. A null chat id means the seller hasn't finished linking yet; callers
+ * skip the send rather than treating it as an error to retry.
+ */
+export function notifySeller(chatId: number | string, text: string): Promise<SendResult> {
   return sendMessage({ chat_id: chatId, text });
 }
 

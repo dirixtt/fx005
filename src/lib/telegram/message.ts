@@ -10,6 +10,7 @@ export type RecordedMessage = {
   direction: MessageDirection;
   text: string | null;
   raw: unknown;
+  store_id: string | null;
 };
 
 /**
@@ -37,6 +38,7 @@ export function buildMessageRow(
   message: BusinessMessage,
   update: TelegramUpdate,
   connectionOwnerId: number | null | undefined,
+  storeId: string | null = null,
 ): RecordedMessage {
   return {
     business_connection_id: message.business_connection_id ?? null,
@@ -48,5 +50,6 @@ export function buildMessageRow(
     // would lose questions like a picture of a jacket captioned "42 bormi?".
     text: message.text ?? message.caption ?? null,
     raw: update,
+    store_id: storeId,
   };
 }
