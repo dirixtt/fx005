@@ -7,6 +7,7 @@ import { ChevronLeft, PackageX } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { resolveStore } from "@/lib/stores/resolve-store";
 import { AddToCartButton } from "@/components/storefront/add-to-cart-button";
+import { ProductReveal } from "@/components/storefront/product-reveal";
 import { formatMoney } from "@/lib/utils";
 import { priceRange, totalStock } from "@/lib/variants";
 
@@ -93,7 +94,7 @@ export default async function ProductDetailPage({
           <ChevronLeft className="h-4 w-4" /> Назад к каталогу
         </Link>
 
-        <div className="grid grid-cols-1 gap-10 md:grid-cols-2">
+        <ProductReveal>
           <div className="relative flex aspect-square items-center justify-center overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-100 text-neutral-300">
             {product.image_url ? (
               <Image
@@ -133,7 +134,7 @@ export default async function ProductDetailPage({
               variants={product.product_variants}
             />
           </div>
-        </div>
+        </ProductReveal>
       </div>
     </>
   );
