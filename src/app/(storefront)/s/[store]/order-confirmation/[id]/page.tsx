@@ -2,16 +2,22 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CheckCircle2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { resolveStore } from "@/lib/stores/resolve-store";
 import { buttonVariants } from "@/components/ui/button";
 import { formatMoney } from "@/lib/utils";
 
 type OrderStatusItem = { product_name: string; quantity: number; unit_price: number; line_total: number };
 
-export default async function OrderConfirmationPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+export default async function OrderConfirmationPage({
+  params,
+}: {
+  params: Promise<{ store: string; id: string }>;
+}) {
+  const { store: storeSlug, id } = await params;
+  const store = await resolveStore(storeSlug);
   const supabase = await createClient();
 
-  const { data } = await supabase.rpc("get_order_status", { p_order_id: id });
+  const { data } = await supabase.rpc("get_order_status", { p_store_id: store.id, p_order_id: id });
   const order = data?.[0];
 
   if (!order) {
@@ -47,7 +53,7 @@ export default async function OrderConfirmationPage({ params }: { params: Promis
         </div>
       </div>
 
-      <Link href="/" className={buttonVariants({ size: "lg" })}>
+      <Link href={`/s/${store.slug}`} className={buttonVariants({ size: "lg" })}>
         Продолжить покупки
       </Link>
     </div>

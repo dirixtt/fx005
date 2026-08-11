@@ -3,10 +3,12 @@
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Search } from "lucide-react";
+import { useStore } from "@/lib/store-context";
 
 export function StorefrontSearch() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const store = useStore();
   const [value, setValue] = useState(searchParams.get("q") ?? "");
 
   function handleSubmit(e: React.FormEvent) {
@@ -18,7 +20,7 @@ export function StorefrontSearch() {
       params.delete("q");
     }
     params.delete("page");
-    router.push(`/?${params.toString()}`);
+    router.push(`/s/${store.slug}?${params.toString()}`);
   }
 
   return (

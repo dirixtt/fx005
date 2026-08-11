@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "motion/react";
 import { useCart } from "@/lib/cart-context";
+import { useStore } from "@/lib/store-context";
 import { createClient } from "@/lib/supabase/client";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +15,8 @@ import { formatMoney } from "@/lib/utils";
 
 export default function CheckoutPage() {
   const { items, subtotal, clear } = useCart();
+  const store = useStore();
+  const base = `/s/${store.slug}`;
   const router = useRouter();
   const supabase = createClient();
 
@@ -29,7 +32,7 @@ export default function CheckoutPage() {
       <div className="space-y-4">
         <h1 className="text-2xl font-bold text-neutral-900">Оформление заказа</h1>
         <p className="text-neutral-500">Корзина пуста.</p>
-        <Link href="/" className={buttonVariants()}>
+        <Link href={base} className={buttonVariants()}>
           В каталог
         </Link>
       </div>
@@ -42,7 +45,12 @@ export default function CheckoutPage() {
     setError(null);
 
     const { data, error } = await supabase.rpc("checkout_order", {
-      p_items: items.map((i) => ({ product_id: i.product_id, quantity: i.quantity })),
+      p_store_id: store.id,
+      // checkout_order reads variant_id per line (it prices and decrements stock
+      // at the variant, not the product) — this was sending product_id, a
+      // pre-existing bug that made every checkout fail before it ever touched
+      // multi-tenancy.
+      p_items: items.map((i) => ({ variant_id: i.variant_id, quantity: i.quantity })),
       p_customer_name: name,
       p_customer_phone: phone,
       p_customer_email: email || undefined,
@@ -57,7 +65,7 @@ export default function CheckoutPage() {
     }
 
     clear();
-    router.push(`/order-confirmation/${data}`);
+    router.push(`${base}/order-confirmation/${data}`);
   }
 
   return (

@@ -32,7 +32,7 @@ const CartContext = createContext<CartContextValue | null>(null);
 // checkout would send identifiers the RPC no longer accepts, so those carts are
 // dropped rather than migrated — guessing which size a shopper meant is worse
 // than asking them to pick again.
-const STORAGE_KEY = "store_cart_v2";
+const STORAGE_PREFIX = "store_cart_v2";
 
 function isValidItem(value: unknown): value is CartItem {
   if (typeof value !== "object" || value === null) return false;
@@ -40,13 +40,19 @@ function isValidItem(value: unknown): value is CartItem {
   return typeof item.variant_id === "string" && typeof item.quantity === "number";
 }
 
-export function CartProvider({ children }: { children: React.ReactNode }) {
+/**
+ * One browser can have several stores' storefronts open — the key is
+ * namespaced per store slug so a shopper with two tabs open never sees one
+ * store's cart bleed into another's.
+ */
+export function CartProvider({ storeSlug, children }: { storeSlug: string; children: React.ReactNode }) {
+  const storageKey = `${STORAGE_PREFIX}:${storeSlug}`;
   const [items, setItems] = useState<CartItem[]>([]);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      const raw = localStorage.getItem(storageKey);
       if (raw) {
         const parsed: unknown = JSON.parse(raw);
         // One-time hydration from localStorage, which isn't available during SSR.
@@ -57,12 +63,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       // ignore corrupt cart data
     }
     setHydrated(true);
+    // storageKey is derived from a route param that doesn't change without a
+    // full navigation/remount, so it's deliberately not in this effect's deps.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     if (hydrated) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+      localStorage.setItem(storageKey, JSON.stringify(items));
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items, hydrated]);
 
   const addItem = useCallback((item: Omit<CartItem, "quantity">, quantity = 1) => {

@@ -4,13 +4,15 @@ import Link from "next/link";
 import { ShoppingCart } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCart } from "@/lib/cart-context";
+import { useStore } from "@/lib/store-context";
 
 export function CartLink() {
   const { itemCount } = useCart();
+  const store = useStore();
 
   return (
     <Link
-      href="/cart"
+      href={`/s/${store.slug}/cart`}
       className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-neutral-700 transition-colors hover:bg-neutral-100"
     >
       <ShoppingCart className="h-5 w-5" />

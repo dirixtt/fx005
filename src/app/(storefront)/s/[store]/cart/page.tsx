@@ -4,11 +4,14 @@ import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
 import { Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
 import { useCart } from "@/lib/cart-context";
+import { useStore } from "@/lib/store-context";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn, formatMoney } from "@/lib/utils";
 
 export default function CartPage() {
   const { items, updateQuantity, removeItem, subtotal } = useCart();
+  const store = useStore();
+  const base = `/s/${store.slug}`;
 
   if (items.length === 0) {
     return (
@@ -18,7 +21,7 @@ export default function CartPage() {
         </div>
         <h1 className="text-xl font-semibold text-neutral-900">Корзина пуста</h1>
         <p className="text-neutral-500">Загляните в каталог, чтобы что-нибудь выбрать.</p>
-        <Link href="/" className={buttonVariants()}>
+        <Link href={base} className={buttonVariants()}>
           В каталог
         </Link>
       </div>
@@ -90,10 +93,10 @@ export default function CartPage() {
           <span>Итого</span>
           <span>{formatMoney(subtotal)}</span>
         </div>
-        <Link href="/checkout" className={cn(buttonVariants({ size: "lg" }), "w-full")}>
+        <Link href={`${base}/checkout`} className={cn(buttonVariants({ size: "lg" }), "w-full")}>
           Оформить заказ
         </Link>
-        <Link href="/" className="block text-center text-sm text-neutral-500 hover:text-brand-700">
+        <Link href={base} className="block text-center text-sm text-neutral-500 hover:text-brand-700">
           Продолжить покупки
         </Link>
       </div>

@@ -5,15 +5,17 @@ import Link from "next/link";
 import Image from "next/image";
 import { ChevronLeft, PackageX } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { resolveStore } from "@/lib/stores/resolve-store";
 import { AddToCartButton } from "@/components/storefront/add-to-cart-button";
 import { formatMoney } from "@/lib/utils";
 import { priceRange, totalStock } from "@/lib/variants";
 
-const getProduct = cache(async (slug: string) => {
+const getProduct = cache(async (storeId: string, slug: string) => {
   const supabase = await createClient();
   const { data } = await supabase
     .from("products")
     .select("*, categories(id, name), product_variants(id, size, color, sale_price, stock_quantity)")
+    .eq("store_id", storeId)
     .eq("slug", slug)
     .maybeSingle();
   return data;
@@ -22,10 +24,11 @@ const getProduct = cache(async (slug: string) => {
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ slug: string }>;
+  params: Promise<{ store: string; slug: string }>;
 }): Promise<Metadata> {
-  const { slug } = await params;
-  const product = await getProduct(slug);
+  const { store: storeSlug, slug } = await params;
+  const store = await resolveStore(storeSlug);
+  const product = await getProduct(store.id, slug);
 
   if (!product) return {};
 
@@ -33,13 +36,13 @@ export async function generateMetadata({
   const description = product.description
     ? product.description.slice(0, 160)
     : range
-      ? `Купить ${product.name} за ${formatMoney(range.min)} — в наличии в fx005.`
-      : `${product.name} — fx005.`;
+      ? `Купить ${product.name} за ${formatMoney(range.min)} — в наличии в ${store.name}.`
+      : `${product.name} — ${store.name}.`;
 
   return {
     title: product.name,
     description,
-    alternates: { canonical: `/products/${product.slug}` },
+    alternates: { canonical: `/s/${store.slug}/products/${product.slug}` },
     openGraph: {
       title: product.name,
       description,
@@ -48,13 +51,20 @@ export async function generateMetadata({
   };
 }
 
-export default async function ProductDetailPage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
-  const product = await getProduct(slug);
+export default async function ProductDetailPage({
+  params,
+}: {
+  params: Promise<{ store: string; slug: string }>;
+}) {
+  const { store: storeSlug, slug } = await params;
+  const store = await resolveStore(storeSlug);
+  const product = await getProduct(store.id, slug);
 
   if (!product) {
     notFound();
   }
+
+  const base = `/s/${store.slug}`;
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -79,7 +89,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <div className="space-y-6">
-        <Link href="/" className="inline-flex items-center gap-1 text-sm font-medium text-neutral-500 hover:text-brand-700">
+        <Link href={base} className="inline-flex items-center gap-1 text-sm font-medium text-neutral-500 hover:text-brand-700">
           <ChevronLeft className="h-4 w-4" /> Назад к каталогу
         </Link>
 
@@ -102,7 +112,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
           <div className="space-y-5">
             {product.categories?.name && (
               <Link
-                href={`/?category=${product.categories.id}`}
+                href={`${base}?category=${product.categories.id}`}
                 className="inline-block rounded-full bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-700 hover:bg-brand-100"
               >
                 {product.categories.name}

@@ -6,6 +6,7 @@ import { motion } from "motion/react";
 import { PackageX } from "lucide-react";
 import { formatMoney } from "@/lib/utils";
 import { priceRange, totalStock, type VariantLike } from "@/lib/variants";
+import { useStore } from "@/lib/store-context";
 
 type Product = {
   id: string;
@@ -26,6 +27,8 @@ function priceLabel(product: Product): string {
 }
 
 export function ProductGrid({ products }: { products: Product[] }) {
+  const store = useStore();
+
   return (
     <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
       {products.map((p) => (
@@ -37,7 +40,7 @@ export function ProductGrid({ products }: { products: Product[] }) {
           transition={{ duration: 0.25 }}
         >
           <Link
-            href={`/products/${p.slug}`}
+            href={`/s/${store.slug}/products/${p.slug}`}
             className="group flex h-full flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm transition-all hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-md"
           >
             <div className="relative flex aspect-square items-center justify-center overflow-hidden bg-neutral-100 text-neutral-300">

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { AlertTriangle } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 
@@ -11,6 +12,8 @@ export default function StorefrontError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const params = useParams<{ store: string }>();
+
   return (
     <div className="mx-auto flex max-w-md flex-col items-center gap-4 py-16 text-center">
       <span className="flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 text-amber-700">
@@ -25,7 +28,7 @@ export default function StorefrontError({
         <Button type="button" onClick={reset}>
           Попробовать снова
         </Button>
-        <Link href="/" className={buttonVariants({ variant: "outline" })}>
+        <Link href={`/s/${params.store}`} className={buttonVariants({ variant: "outline" })}>
           В каталог
         </Link>
       </div>
