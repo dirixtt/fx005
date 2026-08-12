@@ -7,20 +7,24 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { ProductImageUpload } from "@/components/admin/product-image-upload";
+import { VariantEditor } from "@/components/admin/variant-editor";
 import type { ActionState } from "@/lib/actions/products";
 import type { Tables } from "@/lib/types/database.types";
 
 type Category = Tables<"categories">;
 type Product = Tables<"products">;
+type Variant = Tables<"product_variants">;
 
 export function ProductForm({
   action,
   categories,
   product,
+  variants,
 }: {
   action: (prevState: ActionState, formData: FormData) => Promise<ActionState>;
   categories: Category[];
   product?: Product;
+  variants?: Variant[];
 }) {
   const [state, formAction, pending] = useActionState(action, undefined);
 
@@ -31,17 +35,6 @@ export function ProductForm({
       <div className="space-y-1.5">
         <Label htmlFor="name">Название товара</Label>
         <Input id="name" name="name" required defaultValue={product?.name} />
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="space-y-1.5">
-          <Label htmlFor="sku">Артикул (SKU)</Label>
-          <Input id="sku" name="sku" defaultValue={product?.sku ?? ""} />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="barcode">Штрихкод</Label>
-          <Input id="barcode" name="barcode" defaultValue={product?.barcode ?? ""} />
-        </div>
       </div>
 
       <div className="space-y-1.5">
@@ -56,44 +49,7 @@ export function ProductForm({
         </Select>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="space-y-1.5">
-          <Label htmlFor="cost_price">Себестоимость</Label>
-          <Input
-            id="cost_price"
-            name="cost_price"
-            type="number"
-            step="0.01"
-            min="0"
-            required
-            defaultValue={product?.cost_price ?? 0}
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="sale_price">Цена продажи</Label>
-          <Input
-            id="sale_price"
-            name="sale_price"
-            type="number"
-            step="0.01"
-            min="0"
-            required
-            defaultValue={product?.sale_price ?? 0}
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="stock_quantity">Остаток</Label>
-          <Input
-            id="stock_quantity"
-            name="stock_quantity"
-            type="number"
-            step="1"
-            min="0"
-            required
-            defaultValue={product?.stock_quantity ?? 0}
-          />
-        </div>
-      </div>
+      <VariantEditor variants={variants} />
 
       <div className="space-y-1.5">
         <Label htmlFor="description">Описание</Label>

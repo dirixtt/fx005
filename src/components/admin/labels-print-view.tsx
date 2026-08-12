@@ -6,19 +6,24 @@ import { Printer } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { formatMoney } from "@/lib/utils";
+import { variantLabel } from "@/lib/variants";
 
-type LabelProduct = {
+type LabelVariant = {
   id: string;
-  name: string;
+  size: string | null;
+  color: string | null;
   sale_price: number;
   barcode: string | null;
   sku: string | null;
-  slug: string;
+  products: { name: string; slug: string };
 };
 
-function LabelCard({ product }: { product: LabelProduct }) {
+function LabelCard({ variant }: { variant: LabelVariant }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const code = product.barcode || product.sku || product.slug;
+  // Falls back through the identifiers most likely to be scannable. The variant
+  // id is last because it is a UUID — encodable, but unreadable to a human
+  // checking a tag against the shelf.
+  const code = variant.barcode || variant.sku || variant.id;
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -38,14 +43,17 @@ function LabelCard({ product }: { product: LabelProduct }) {
 
   return (
     <div className="flex flex-col items-center gap-1 rounded-lg border border-neutral-300 p-3 text-center print:break-inside-avoid">
-      <p className="line-clamp-2 min-h-8 text-xs font-medium text-neutral-900">{product.name}</p>
-      <p className="text-lg font-bold text-neutral-900">{formatMoney(product.sale_price)}</p>
+      <p className="line-clamp-2 min-h-8 text-xs font-medium text-neutral-900">
+        {variant.products.name}
+      </p>
+      <p className="text-xs font-semibold text-neutral-500">{variantLabel(variant)}</p>
+      <p className="text-lg font-bold text-neutral-900">{formatMoney(variant.sale_price)}</p>
       <canvas ref={canvasRef} />
     </div>
   );
 }
 
-export function LabelsPrintView({ products }: { products: LabelProduct[] }) {
+export function LabelsPrintView({ variants }: { variants: LabelVariant[] }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between print:hidden">
@@ -57,12 +65,12 @@ export function LabelsPrintView({ products }: { products: LabelProduct[] }) {
         </Button>
       </div>
 
-      {products.length === 0 ? (
+      {variants.length === 0 ? (
         <p className="text-neutral-500">Товары не выбраны.</p>
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 print:grid-cols-3 print:gap-2">
-          {products.map((p) => (
-            <LabelCard key={p.id} product={p} />
+          {variants.map((v) => (
+            <LabelCard key={v.id} variant={v} />
           ))}
         </div>
       )}

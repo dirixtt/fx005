@@ -16,7 +16,7 @@ export default function AdminError({
       <span className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-red-700">
         <AlertTriangle className="h-6 w-6" />
       </span>
-      <h1 className="text-xl font-bold text-neutral-900">Не удалось загрузить раздел</h1>
+      <h1 className="text-xl font-bold tracking-tight text-neutral-900">Не удалось загрузить раздел</h1>
       <p className="text-sm text-neutral-500">
         Возможно, база данных недоступна или истекла сессия. Попробуйте обновить — если
         не поможет, войдите заново.

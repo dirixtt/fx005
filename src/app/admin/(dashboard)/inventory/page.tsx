@@ -21,7 +21,7 @@ export default async function InventoryPage({
 
   let productsQuery = supabase
     .from("products")
-    .select("*, categories(id, name)", { count: "exact" })
+    .select("*, categories(id, name), product_variants(*)", { count: "exact" })
     .order("created_at", { ascending: false });
 
   if (category) productsQuery = productsQuery.eq("category_id", category);
@@ -48,7 +48,7 @@ export default async function InventoryPage({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-neutral-900">Склад</h1>
+          <h1 className="text-xl font-bold tracking-tight text-neutral-900">Склад</h1>
           <p className="text-sm text-neutral-500">{count ?? 0} товаров всего</p>
         </div>
         <Link href="/admin/inventory/new" className={buttonVariants()}>

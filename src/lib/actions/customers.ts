@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { requireCurrentStore } from "@/lib/stores/current-store";
 
 export type ActionState = { error?: string } | undefined;
 
@@ -15,8 +16,10 @@ export async function createCustomer(_prevState: ActionState, formData: FormData
     return { error: "Name is required" };
   }
 
+  const store = await requireCurrentStore();
   const supabase = await createClient();
   const { error } = await supabase.from("customers").insert({
+    store_id: store.id,
     full_name,
     phone: phone || null,
     email: email || null,

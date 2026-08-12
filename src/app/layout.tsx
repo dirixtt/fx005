@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { getSiteUrl } from "@/lib/site-url";
+import { MotionProvider } from "@/components/motion-provider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -12,11 +14,14 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-const siteTitle = "fx005 — инструменты и электротовары";
+const siteUrl = getSiteUrl();
+const siteTitle = "fx005 — Telegram-ассистент для продавцов одежды и обуви";
 const siteDescription =
-  "Магазин инструментов и электротоваров: каталог в наличии, цены, самовывоз и доставка по городу.";
+  "Продавайте в Telegram: бот отвечает клиентам по остаткам из вашей базы, никогда не выдумывает наличие и цену, и передаёт вам всё, что не смог сам.";
 
+// Generic, product-level metadata for the landing page and anything outside
+// a store's own storefront. Each /s/[store] route overrides this with the
+// store's own name/tagline via its own generateMetadata — see that layout.
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
@@ -48,7 +53,9 @@ export default function RootLayout({
       lang="ru"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <MotionProvider>{children}</MotionProvider>
+      </body>
     </html>
   );
 }

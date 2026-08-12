@@ -1,19 +1,57 @@
 export type PendingSale = {
   id: string;
-  items: { product_id: string; quantity: number }[];
+  items: { variant_id: string; quantity: number }[];
   payment_method: "cash" | "card" | "other";
   customer_id?: string;
   created_at: string;
   error?: string;
 };
 
-const STORAGE_KEY = "pos_pending_sales";
+// Bumped when queued lines changed from product_id to variant_id. Replaying a
+// pre-variant sale would post identifiers create_pos_sale no longer accepts, so
+// it would fail on every sync attempt forever.
+const STORAGE_KEY = "pos_pending_sales_v2";
+const LEGACY_STORAGE_KEY = "pos_pending_sales";
+
+/**
+ * Queued sales are real money already taken across the counter, so anything left
+ * in the old key is moved aside rather than deleted — it stays readable in
+ * localStorage under `pos_pending_sales_orphaned` for manual entry, instead of
+ * vanishing on the first page load after deploy.
+ */
+function quarantineLegacyQueue() {
+  const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
+  if (!legacy || legacy === "[]") {
+    localStorage.removeItem(LEGACY_STORAGE_KEY);
+    return;
+  }
+
+  const existing = localStorage.getItem("pos_pending_sales_orphaned");
+  localStorage.setItem(
+    "pos_pending_sales_orphaned",
+    existing ? `${existing.replace(/]$/, "")},${legacy.replace(/^\[/, "")}` : legacy,
+  );
+  localStorage.removeItem(LEGACY_STORAGE_KEY);
+  console.warn(
+    "[pos] offline sales queued before the size update were moved to " +
+      "localStorage['pos_pending_sales_orphaned'] and must be entered by hand.",
+  );
+}
 
 export function loadPendingSales(): PendingSale[] {
   if (typeof window === "undefined") return [];
   try {
+    quarantineLegacyQueue();
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    // A line without variant_id predates the change and can never sync.
+    return parsed.filter(
+      (s): s is PendingSale =>
+        Array.isArray(s?.items) &&
+        s.items.every((i: { variant_id?: unknown }) => typeof i?.variant_id === "string"),
+    );
   } catch {
     return [];
   }

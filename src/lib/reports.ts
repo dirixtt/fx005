@@ -53,10 +53,13 @@ export async function getReportData(
       .gte("sales.created_at", fromIso)
       .lte("sales.created_at", toIso)
       .range(0, REPORT_ROW_LIMIT),
+    // Stock now lives per size, so valuation sums variants and reaches through the
+    // foreign key to skip archived products — the product-level flag is still what
+    // decides whether an item counts as inventory.
     supabase
-      .from("products")
-      .select("stock_quantity, cost_price")
-      .eq("is_active", true)
+      .from("product_variants")
+      .select("stock_quantity, cost_price, products!inner(is_active)")
+      .eq("products.is_active", true)
       .range(0, REPORT_ROW_LIMIT),
   ]);
 

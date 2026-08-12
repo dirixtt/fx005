@@ -17,18 +17,21 @@ export function StatCard({
   value,
   href,
   accent = "neutral",
+  index = 0,
 }: {
   icon: React.ReactNode;
   label: string;
   value: string | number;
   href?: string;
   accent?: keyof typeof accentStyles;
+  /** Position in a row of stat cards — turns simultaneous entrances into a stagger. */
+  index?: number;
 }) {
   const content = (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25 }}
+      transition={{ duration: 0.25, delay: Math.min(index, 6) * 0.06, ease: "easeOut" }}
       className="flex items-center gap-4 rounded-xl border border-neutral-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
     >
       <div className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-lg", accentStyles[accent])}>

@@ -1,48 +1,43 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
-import { Wrench } from "lucide-react";
+import { LogoMark } from "@/components/brand/logo";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
+/**
+ * Any number of sellers can have an account now — this is no longer gated
+ * behind "does an owner already exist" (that only ever made sense for a
+ * single-store deployment). A brand-new signup lands on /admin/onboarding,
+ * which creates their store; an existing owner with no store yet (there is
+ * exactly one, from before this pivot) lands there too.
+ */
 export default function LoginPage() {
   const router = useRouter();
   const supabase = createClient();
 
-  const [mode, setMode] = useState<"loading" | "signup" | "login" | "check-email">("loading");
+  const [mode, setMode] = useState<"signup" | "login" | "check-email">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    supabase.rpc("owner_exists").then(({ data, error }) => {
-      if (error) {
-        setError(error.message);
-        setMode("login");
-        return;
-      }
-      setMode(data ? "login" : "signup");
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
 
     if (password !== confirmPassword) {
-      setError("Passwords do not match");
+      setError("Пароли не совпадают");
       return;
     }
     if (password.length < 8) {
-      setError("Password must be at least 8 characters");
+      setError("Пароль должен быть не короче 8 символов");
       return;
     }
 
@@ -56,7 +51,7 @@ export default function LoginPage() {
     }
 
     if (data.session) {
-      router.push("/admin");
+      router.push("/admin/onboarding");
       router.refresh();
     } else {
       setMode("check-email");
@@ -75,6 +70,8 @@ export default function LoginPage() {
       return;
     }
 
+    // /admin's layout redirects to /admin/onboarding itself when this account
+    // has no store yet — no need to guess that here.
     router.push("/admin");
     router.refresh();
   }
@@ -88,11 +85,9 @@ export default function LoginPage() {
         className="w-full max-w-sm"
       >
         <div className="mb-6 flex flex-col items-center gap-3 text-center">
-          <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-600 text-white shadow-lg shadow-brand-900/40">
-            <Wrench className="h-6 w-6" strokeWidth={2.5} />
-          </span>
+          <LogoMark className="h-14 w-14 text-white" />
           <div>
-            <p className="text-lg font-bold text-white">fx005</p>
+            <p className="text-lg font-bold text-white">FX005</p>
             <p className="text-xs text-neutral-400">Панель управления магазином</p>
           </div>
         </div>
@@ -100,17 +95,10 @@ export default function LoginPage() {
         <Card className="border-neutral-800 bg-white">
           <CardHeader>
             <CardTitle className="text-base font-semibold normal-case tracking-normal text-neutral-900">
-              {mode === "signup" ? "Создать аккаунт владельца" : "Вход для владельца"}
+              {mode === "signup" ? "Создать аккаунт" : "Вход"}
             </CardTitle>
-            {mode === "signup" && (
-              <p className="text-sm text-neutral-500">
-                Аккаунт владельца ещё не создан. Это единственный логин для магазина.
-              </p>
-            )}
           </CardHeader>
           <CardContent>
-            {mode === "loading" && <p className="text-sm text-neutral-500">Загрузка...</p>}
-
             {mode === "check-email" && (
               <div className="space-y-3 text-sm text-neutral-700">
                 <p>
@@ -162,6 +150,16 @@ export default function LoginPage() {
                 <Button type="submit" className="w-full" disabled={submitting}>
                   {submitting ? "Подождите..." : mode === "signup" ? "Создать аккаунт" : "Войти"}
                 </Button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setError(null);
+                    setMode(mode === "signup" ? "login" : "signup");
+                  }}
+                  className="w-full text-center text-xs text-neutral-500 hover:text-neutral-700"
+                >
+                  {mode === "signup" ? "Уже есть аккаунт? Войти" : "Ещё нет аккаунта? Создать"}
+                </button>
               </form>
             )}
           </CardContent>
