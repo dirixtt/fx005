@@ -5,10 +5,8 @@ import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import { LogoMark } from "@/components/brand/logo";
 import { createClient } from "@/lib/supabase/client";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 /**
  * Any number of sellers can have an account now — this is no longer gated
@@ -76,94 +74,131 @@ export default function LoginPage() {
     router.refresh();
   }
 
+  const inputClassName =
+    "h-auto w-full rounded-xl border-divider bg-input-bg px-3.5 py-3 text-sm text-fg-primary shadow-none placeholder:text-fg-tertiary focus-visible:ring-accent-orange";
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-ink-950 px-4">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-bg-app px-5 py-20 text-fg-primary transition-colors duration-300">
+      <div
+        className="pointer-events-none absolute -left-24 -top-36 h-[380px] w-[380px] rounded-full blur-[30px]"
+        style={{
+          background: "radial-gradient(circle, var(--tint-orange), transparent 70%)",
+          animation: "floatBlobA 14s ease-in-out infinite",
+        }}
+      />
+      <div
+        className="pointer-events-none absolute -bottom-40 -right-28 h-[420px] w-[420px] rounded-full blur-[30px]"
+        style={{
+          background: "radial-gradient(circle, var(--tint-blue), transparent 70%)",
+          animation: "floatBlobB 16s ease-in-out infinite",
+        }}
+      />
+
       <motion.div
-        initial={{ opacity: 0, y: 16 }}
+        initial={{ opacity: 0, y: 14 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        className="w-full max-w-sm"
+        transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+        className="relative z-[2] w-full max-w-[400px] rounded-3xl border border-glass-border bg-glass-bg-strong p-10 shadow-[0_24px_60px_var(--shadow-color)] backdrop-blur-xl"
       >
-        <div className="mb-6 flex flex-col items-center gap-3 text-center">
-          <LogoMark className="h-14 w-14 text-white" />
-          <div>
-            <p className="text-lg font-bold text-white">FX005</p>
-            <p className="text-xs text-neutral-400">Панель управления магазином</p>
-          </div>
+        <div className="mb-6 flex flex-col items-center text-center">
+          <LogoMark className="mb-4 h-11 w-11 shadow-[0_6px_18px_rgba(79,101,235,0.35)]" />
+          <h1 className="text-[22px] font-bold tracking-tight">
+            {mode === "signup" ? "Создать аккаунт" : "Войти в кабинет"}
+          </h1>
+          <p className="mt-1.5 text-[13.5px] text-fg-tertiary">Доступ только для владельца магазина</p>
         </div>
 
-        <Card className="border-neutral-800 bg-white">
-          <CardHeader>
-            <CardTitle className="text-base font-semibold normal-case tracking-normal text-neutral-900">
-              {mode === "signup" ? "Создать аккаунт" : "Вход"}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {mode === "check-email" && (
-              <div className="space-y-3 text-sm text-neutral-700">
-                <p>
-                  Мы отправили ссылку для подтверждения на <strong>{email}</strong>.
-                </p>
-                <p>Перейдите по ссылке в письме, затем вернитесь и войдите ниже.</p>
-                <Button variant="outline" className="w-full" onClick={() => setMode("login")}>
-                  Перейти ко входу
-                </Button>
+        {mode === "check-email" && (
+          <div className="space-y-4 text-sm text-fg-secondary">
+            <p>
+              Мы отправили ссылку для подтверждения на <strong className="text-fg-primary">{email}</strong>.
+            </p>
+            <p>Перейдите по ссылке в письме, затем вернитесь и войдите ниже.</p>
+            <button
+              type="button"
+              onClick={() => setMode("login")}
+              className="w-full rounded-full border border-divider bg-glass-bg px-4 py-3 text-sm font-semibold text-fg-primary backdrop-blur-xl"
+            >
+              Перейти ко входу
+            </button>
+          </div>
+        )}
+
+        {(mode === "signup" || mode === "login") && (
+          <form onSubmit={mode === "signup" ? handleSignup : handleLogin} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="email" className="text-[12.5px] font-semibold text-fg-secondary">
+                Email
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="you@shop.uz"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className={inputClassName}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="password" className="text-[12.5px] font-semibold text-fg-secondary">
+                Пароль
+              </Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="••••••••"
+                required
+                minLength={mode === "signup" ? 8 : undefined}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className={inputClassName}
+              />
+            </div>
+            {mode === "signup" && (
+              <div className="space-y-1.5">
+                <Label htmlFor="confirmPassword" className="text-[12.5px] font-semibold text-fg-secondary">
+                  Подтвердите пароль
+                </Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  placeholder="••••••••"
+                  required
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className={inputClassName}
+                />
               </div>
             )}
+            {error && <p className="text-sm text-red-500">{error}</p>}
+            <button
+              type="submit"
+              disabled={submitting}
+              className="w-full rounded-full px-4 py-3.5 text-[14.5px] font-semibold text-white shadow-[0_10px_26px_rgba(79,101,235,0.32)] transition-transform active:scale-[0.98] disabled:opacity-60 disabled:active:scale-100"
+              style={{ background: "var(--accent-orange-grad)" }}
+            >
+              {submitting ? "Подождите..." : mode === "signup" ? "Создать аккаунт" : "Войти"}
+            </button>
 
-            {(mode === "signup" || mode === "login") && (
-              <form onSubmit={mode === "signup" ? handleSignup : handleLogin} className="space-y-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="password">Пароль</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    required
-                    minLength={mode === "signup" ? 8 : undefined}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                  />
-                </div>
-                {mode === "signup" && (
-                  <div className="space-y-1.5">
-                    <Label htmlFor="confirmPassword">Подтвердите пароль</Label>
-                    <Input
-                      id="confirmPassword"
-                      type="password"
-                      required
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                    />
-                  </div>
-                )}
-                {error && <p className="text-sm text-red-600">{error}</p>}
-                <Button type="submit" className="w-full" disabled={submitting}>
-                  {submitting ? "Подождите..." : mode === "signup" ? "Создать аккаунт" : "Войти"}
-                </Button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setError(null);
-                    setMode(mode === "signup" ? "login" : "signup");
-                  }}
-                  className="w-full text-center text-xs text-neutral-500 hover:text-neutral-700"
-                >
-                  {mode === "signup" ? "Уже есть аккаунт? Войти" : "Ещё нет аккаунта? Создать"}
-                </button>
-              </form>
-            )}
-          </CardContent>
-        </Card>
+            <div className="flex items-center gap-3 py-1">
+              <div className="h-px flex-1 bg-divider" />
+              <span className="text-xs text-fg-tertiary">или</span>
+              <div className="h-px flex-1 bg-divider" />
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setError(null);
+                setMode(mode === "signup" ? "login" : "signup");
+              }}
+              className="w-full text-center text-[13.5px] text-fg-secondary hover:text-fg-primary"
+            >
+              {mode === "signup" ? "Уже есть аккаунт? Войти" : "Ещё нет аккаунта? Создать"}
+            </button>
+          </form>
+        )}
       </motion.div>
     </div>
   );

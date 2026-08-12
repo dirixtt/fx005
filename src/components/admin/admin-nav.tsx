@@ -49,7 +49,8 @@ export function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
             {isActive && (
               <motion.span
                 layoutId="admin-nav-active"
-                className="absolute inset-0 rounded-lg bg-brand-600"
+                className="absolute inset-0 rounded-lg"
+                style={{ background: "var(--accent-orange-grad)" }}
                 transition={{ type: "spring", stiffness: 400, damping: 32 }}
               />
             )}

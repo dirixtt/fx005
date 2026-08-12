@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { getSiteUrl } from "@/lib/site-url";
 import { MotionProvider } from "@/components/motion-provider";
+import { ThemeProvider, ThemeScript } from "@/components/theme-provider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -15,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 const siteUrl = getSiteUrl();
-const siteTitle = "fx005 — Telegram-ассистент для продавцов одежды и обуви";
+const siteTitle = "Javob — Telegram-ассистент для продавцов одежды и обуви";
 const siteDescription =
   "Продавайте в Telegram: бот отвечает клиентам по остаткам из вашей базы, никогда не выдумывает наличие и цену, и передаёт вам всё, что не смог сам.";
 
@@ -26,12 +27,12 @@ export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
     default: siteTitle,
-    template: "%s · fx005",
+    template: "%s · Javob",
   },
   description: siteDescription,
   openGraph: {
     type: "website",
-    siteName: "fx005",
+    siteName: "Javob",
     title: siteTitle,
     description: siteDescription,
     locale: "ru_RU",
@@ -53,8 +54,13 @@ export default function RootLayout({
       lang="ru"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
+      <head>
+        <ThemeScript />
+      </head>
       <body className="min-h-full flex flex-col">
-        <MotionProvider>{children}</MotionProvider>
+        <ThemeProvider>
+          <MotionProvider>{children}</MotionProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

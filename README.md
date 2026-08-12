@@ -1,4 +1,4 @@
-# fx005
+# Javob
 
 A self-hosted, single-store retail management app (a scoped-down clone of billz.io) built for running your own shop: point-of-sale checkout, inventory, a public online storefront, basic CRM, and sales reporting.
 

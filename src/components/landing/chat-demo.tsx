@@ -10,14 +10,14 @@ import { motion } from "motion/react";
  */
 const EXCHANGE = [
   { from: "customer", text: "Bomber 42 bormi?" },
-  { from: "bot", text: "Есть, Бомбер чёрный, 42 — 450 000 сум." },
+  { from: "bot", text: "Есть, бомбер чёрный, 42 — 450 000 сум." },
   { from: "customer", text: "Оформите" },
-  { from: "bot", text: "Отлично! Напишите имя и телефон — оформлю заказ." },
+  { from: "bot", text: "Отлично! Имя и телефон — и оформлю заказ." },
 ] as const;
 
 export function ChatDemo() {
   return (
-    <div className="mx-auto max-w-sm space-y-2 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+    <div className="mx-auto max-w-sm space-y-2.5 rounded-[26px] border border-glass-border bg-glass-bg-strong p-5 shadow-[0_24px_60px_var(--shadow-color)] backdrop-blur-xl">
       {EXCHANGE.map((message, i) => {
         const fromCustomer = message.from === "customer";
         return (
@@ -32,9 +32,10 @@ export function ChatDemo() {
             <div
               className={
                 fromCustomer
-                  ? "max-w-[80%] rounded-2xl rounded-bl-sm bg-neutral-100 px-3 py-2 text-sm text-neutral-900"
-                  : "max-w-[80%] rounded-2xl rounded-br-sm bg-brand-600 px-3 py-2 text-sm text-white"
+                  ? "max-w-[80%] rounded-2xl rounded-bl-sm bg-tint-neutral px-3.5 py-2.5 text-sm text-fg-primary"
+                  : "max-w-[80%] rounded-2xl rounded-br-sm px-3.5 py-2.5 text-sm text-white"
               }
+              style={fromCustomer ? undefined : { background: "var(--accent-orange-grad)" }}
             >
               {message.text}
             </div>

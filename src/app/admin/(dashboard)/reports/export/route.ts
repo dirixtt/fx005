@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
   const workbook = XLSX.utils.book_new();
 
   const summarySheet = XLSX.utils.aoa_to_sheet([
-    ["Отчёт по магазину fx005"],
+    ["Отчёт — Javob"],
     [`Период: ${from} — ${to}`],
     [],
     ["Показатель", "Значение"],
@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
   return new NextResponse(buffer, {
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": `attachment; filename="fx005-report-${from}-${to}.xlsx"`,
+      "Content-Disposition": `attachment; filename="javob-report-${from}-${to}.xlsx"`,
     },
   });
 }

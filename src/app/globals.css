@@ -19,9 +19,77 @@
   --color-ink-900: #1c1917;
   --color-ink-800: #292524;
 
-  /* Navy from the FX005 mark. Kept separate from the orange accent scale so the
-     logo renders in its own colour without repainting the whole interface. */
+  /* Legacy navy, still referenced on the storefront header outside the glass
+     redesign's scope (landing/login/dashboard). The Javob mark itself now
+     always renders its own fixed gradient, independent of this token. */
   --color-brandnavy: #1e3a5f;
+
+  /* -------------------------------------------------------------------------
+     Javob glass design system (landing, login, dashboard + sidebar). Kept
+     separate from the --color-brand-* scale above, which the rest of the
+     admin (inventory, POS, orders, customers, reports, settings) still uses.
+     ------------------------------------------------------------------------- */
+  --accent-orange: oklch(58% 0.19 255);
+  --accent-orange-grad: linear-gradient(135deg, oklch(66% 0.19 255), oklch(52% 0.2 265));
+  --accent-blue: oklch(58% 0.19 75);
+}
+
+[data-theme="light"] {
+  --bg-app: oklch(97% 0.004 50);
+  --bg-app-2: oklch(94% 0.006 50);
+  --fg-primary: oklch(20% 0.01 50);
+  --fg-secondary: oklch(45% 0.012 50);
+  --fg-tertiary: oklch(62% 0.01 50);
+  --surface-solid: oklch(99% 0.002 50);
+  --glass-bg: rgba(255, 255, 255, 0.55);
+  --glass-bg-strong: rgba(255, 255, 255, 0.8);
+  --glass-border: rgba(255, 255, 255, 0.75);
+  --divider: rgba(0, 0, 0, 0.08);
+  --shadow-color: rgba(40, 32, 24, 0.1);
+  --input-bg: rgba(255, 255, 255, 0.65);
+  --tint-orange: rgba(79, 101, 235, 0.12);
+  --tint-blue: rgba(196, 150, 10, 0.1);
+  --tint-neutral: rgba(0, 0, 0, 0.05);
+  --header-bg: rgba(255, 255, 255, 0.6);
+}
+
+[data-theme="dark"] {
+  --bg-app: oklch(19% 0.008 50);
+  --bg-app-2: oklch(23% 0.01 50);
+  --fg-primary: oklch(96% 0.004 50);
+  --fg-secondary: oklch(75% 0.008 50);
+  --fg-tertiary: oklch(54% 0.008 50);
+  --surface-solid: oklch(24% 0.008 50);
+  --glass-bg: rgba(255, 255, 255, 0.06);
+  --glass-bg-strong: rgba(255, 255, 255, 0.1);
+  --glass-border: rgba(255, 255, 255, 0.14);
+  --divider: rgba(255, 255, 255, 0.1);
+  --shadow-color: rgba(0, 0, 0, 0.5);
+  --input-bg: rgba(255, 255, 255, 0.08);
+  --tint-orange: rgba(99, 124, 255, 0.18);
+  --tint-blue: rgba(224, 175, 30, 0.18);
+  --tint-neutral: rgba(255, 255, 255, 0.08);
+  --header-bg: rgba(20, 19, 22, 0.55);
+}
+
+@keyframes floatBlobA {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(-24px, 18px) scale(1.06);
+  }
+}
+
+@keyframes floatBlobB {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(20px, -16px) scale(1.04);
+  }
 }
 
 @theme inline {
@@ -46,6 +114,24 @@
   --color-ink-800: var(--color-ink-800);
 
   --color-brandnavy: var(--color-brandnavy);
+
+  --color-bg-app: var(--bg-app);
+  --color-bg-app-2: var(--bg-app-2);
+  --color-fg-primary: var(--fg-primary);
+  --color-fg-secondary: var(--fg-secondary);
+  --color-fg-tertiary: var(--fg-tertiary);
+  --color-surface-solid: var(--surface-solid);
+  --color-glass-bg: var(--glass-bg);
+  --color-glass-bg-strong: var(--glass-bg-strong);
+  --color-glass-border: var(--glass-border);
+  --color-divider: var(--divider);
+  --color-input-bg: var(--input-bg);
+  --color-tint-orange: var(--tint-orange);
+  --color-tint-blue: var(--tint-blue);
+  --color-tint-neutral: var(--tint-neutral);
+  --color-header-bg: var(--header-bg);
+  --color-accent-orange: var(--accent-orange);
+  --color-accent-blue: var(--accent-blue);
 }
 
 body {
@@ -96,8 +182,20 @@ body {
      rather than leaving a half-legible surface over scrolling content. */
   .backdrop-blur,
   .backdrop-blur-sm,
-  .backdrop-blur-md {
+  .backdrop-blur-md,
+  .backdrop-blur-lg,
+  .backdrop-blur-xl {
     backdrop-filter: none !important;
     background-color: #ffffff !important;
+  }
+
+  /* Javob glass surfaces key off these custom properties rather than a fixed
+     Tailwind class, so they need their own override: swap the translucent
+     values for the theme's solid surface instead of hardcoding white, which
+     would flash light-on-dark for anyone in dark mode. */
+  :root {
+    --glass-bg: var(--surface-solid);
+    --glass-bg-strong: var(--surface-solid);
+    --header-bg: var(--surface-solid);
   }
 }

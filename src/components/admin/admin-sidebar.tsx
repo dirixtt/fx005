@@ -12,17 +12,17 @@ import { cn } from "@/lib/utils";
 function SidebarContent({ storeName, onNavigate }: { storeName: string; onNavigate?: () => void }) {
   return (
     <>
-      <div className="flex items-center gap-2 px-4 py-4">
-        <LogoMark className="h-8 w-8 shrink-0 text-white" />
-        <p className="truncate text-sm font-bold text-white">{storeName}</p>
+      <div className="flex items-center gap-2.5 px-4 py-[22px]">
+        <LogoMark className="h-[30px] w-[30px] shrink-0" />
+        <p className="truncate text-[15px] font-bold text-white">{storeName}</p>
       </div>
       <AdminNav onNavigate={onNavigate} />
-      <div className="space-y-1 p-3">
+      <div className="space-y-1 p-3 pt-3 border-t border-white/8">
         <a
           href="/admin/backup/export"
           className={cn(
             buttonVariants({ variant: "ghost", size: "sm" }),
-            "w-full justify-start gap-2.5 text-neutral-400 hover:bg-white/5 hover:text-white",
+            "w-full justify-start gap-2.5 text-neutral-400 hover:bg-white/8 hover:text-white",
           )}
         >
           <DatabaseBackup className="h-4 w-4" /> Резервная копия
@@ -32,7 +32,7 @@ function SidebarContent({ storeName, onNavigate }: { storeName: string; onNaviga
             type="submit"
             variant="ghost"
             size="sm"
-            className="w-full justify-start gap-2.5 text-neutral-400 hover:bg-white/5 hover:text-white"
+            className="w-full justify-start gap-2.5 text-neutral-400 hover:bg-white/8 hover:text-white"
           >
             <LogOut className="h-4 w-4" /> Выйти
           </Button>
@@ -42,16 +42,22 @@ function SidebarContent({ storeName, onNavigate }: { storeName: string; onNaviga
   );
 }
 
+const SIDEBAR_GLASS = {
+  background: "rgba(15,14,17,0.72)",
+  backdropFilter: "blur(28px) saturate(180%)",
+  WebkitBackdropFilter: "blur(28px) saturate(180%)",
+};
+
 export function AdminSidebar({ storeName }: { storeName: string }) {
   const [open, setOpen] = useState(false);
 
   return (
     <>
       {/* Mobile top bar */}
-      <div className="sticky top-0 z-30 flex items-center justify-between border-b border-neutral-200 bg-white px-4 py-3 md:hidden">
+      <div className="sticky top-0 z-30 flex items-center justify-between border-b border-divider bg-header-bg px-4 py-3 backdrop-blur-xl md:hidden">
         <div className="flex items-center gap-2">
-          <LogoMark className="h-8 w-8 shrink-0 text-brandnavy" />
-          <p className="truncate text-sm font-bold text-neutral-900">{storeName}</p>
+          <LogoMark className="h-8 w-8 shrink-0" />
+          <p className="truncate text-sm font-bold text-fg-primary">{storeName}</p>
         </div>
         <Button type="button" variant="ghost" size="icon" onClick={() => setOpen(true)} aria-label="Открыть меню">
           <Menu className="h-5 w-5" />
@@ -59,7 +65,10 @@ export function AdminSidebar({ storeName }: { storeName: string }) {
       </div>
 
       {/* Desktop sidebar */}
-      <aside className="hidden w-56 shrink-0 flex-col bg-ink-950 md:flex">
+      <aside
+        className="hidden w-[250px] shrink-0 flex-col border-r border-white/8 md:flex"
+        style={SIDEBAR_GLASS}
+      >
         <SidebarContent storeName={storeName} />
       </aside>
 
@@ -79,13 +88,14 @@ export function AdminSidebar({ storeName }: { storeName: string }) {
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ type: "spring", stiffness: 320, damping: 32 }}
-              className="fixed inset-y-0 left-0 z-50 flex w-64 flex-col bg-ink-950 md:hidden"
+              className="fixed inset-y-0 left-0 z-50 flex w-64 flex-col md:hidden"
+              style={SIDEBAR_GLASS}
             >
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="absolute right-2 top-3 text-neutral-400 hover:bg-white/5 hover:text-white"
+                className="absolute right-2 top-3 text-neutral-400 hover:bg-white/8 hover:text-white"
                 onClick={() => setOpen(false)}
                 aria-label="Закрыть меню"
               >
