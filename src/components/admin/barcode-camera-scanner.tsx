@@ -2,11 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Camera, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 
 const REGION_ID = "pos-barcode-scanner-region";
 
 export function BarcodeCameraScanner({ onScan }: { onScan: (code: string) => void }) {
+  const t = useTranslations("pos");
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const scannerRef = useRef<import("html5-qrcode").Html5Qrcode | null>(null);
@@ -38,7 +40,7 @@ export function BarcodeCameraScanner({ onScan }: { onScan: (code: string) => voi
           },
         )
         .catch((err: unknown) => {
-          setError(err instanceof Error ? err.message : "Не удалось открыть камеру");
+          setError(err instanceof Error ? err.message : t("cameraError"));
         });
     });
 
@@ -61,11 +63,11 @@ export function BarcodeCameraScanner({ onScan }: { onScan: (code: string) => voi
       <Button type="button" variant="outline" size="sm" onClick={() => setOpen((v) => !v)}>
         {open ? (
           <>
-            <X className="h-4 w-4" /> Закрыть камеру
+            <X className="h-4 w-4" /> {t("closeCamera")}
           </>
         ) : (
           <>
-            <Camera className="h-4 w-4" /> Сканировать камерой
+            <Camera className="h-4 w-4" /> {t("scanWithCamera")}
           </>
         )}
       </Button>

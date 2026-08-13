@@ -3,10 +3,12 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Check, ShoppingCart } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import { useCart } from "@/lib/cart-context";
 import { Button } from "@/components/ui/button";
 import { cn, formatMoney } from "@/lib/utils";
 import { defaultVariant, variantLabel, type VariantLike } from "@/lib/variants";
+import type { AppLocale } from "@/lib/i18n/locale";
 
 type Product = { id: string; name: string; slug: string; image_url: string | null };
 
@@ -24,6 +26,8 @@ export function AddToCartButton({
   product: Product;
   variants: VariantLike[];
 }) {
+  const t = useTranslations("storefront");
+  const locale = useLocale() as AppLocale;
   const { addItem } = useCart();
   const [selectedId, setSelectedId] = useState(() => defaultVariant(variants)?.id ?? null);
   const [added, setAdded] = useState(false);
@@ -38,7 +42,7 @@ export function AddToCartButton({
     <div className="space-y-4">
       {hasChoices && (
         <div className="space-y-2">
-          <p className="text-sm font-medium text-neutral-700">Размер</p>
+          <p className="text-sm font-medium text-neutral-700">{t("sizeLabel")}</p>
           <div className="flex flex-wrap gap-2">
             {variants.map((variant) => {
               const soldOut = variant.stock_quantity <= 0;
@@ -86,10 +90,10 @@ export function AddToCartButton({
               transition={{ duration: 0.15, ease: "easeOut" }}
               className="text-3xl font-bold tracking-tight text-brand-700"
             >
-              {formatMoney(selected.sale_price)}
+              {formatMoney(selected.sale_price, locale)}
             </motion.p>
           </AnimatePresence>
-          <p className="text-sm text-neutral-500">В наличии: {selected.stock_quantity} шт.</p>
+          <p className="text-sm text-neutral-500">{t("inStockLabel", { count: selected.stock_quantity })}</p>
           <Button
             type="button"
             size="lg"
@@ -110,18 +114,18 @@ export function AddToCartButton({
           >
             {added ? (
               <>
-                <Check className="h-4 w-4" /> Добавлено
+                <Check className="h-4 w-4" /> {t("added")}
               </>
             ) : (
               <>
-                <ShoppingCart className="h-4 w-4" /> В корзину
+                <ShoppingCart className="h-4 w-4" /> {t("addToCart")}
               </>
             )}
           </Button>
         </div>
       ) : (
         <p className="inline-block rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
-          Нет в наличии
+          {t("outOfStock")}
         </p>
       )}
     </div>

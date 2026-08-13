@@ -2,10 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import {
   parseVariantsFromFormData,
-  productWithVariantsSchema,
+  createProductWithVariantsSchema,
   type VariantFormValues,
 } from "@/lib/validation/product";
 import { slugify } from "@/lib/utils";
@@ -13,8 +14,9 @@ import { requireCurrentStore } from "@/lib/stores/current-store";
 
 export type ActionState = { error?: string } | undefined;
 
-function parseForm(formData: FormData) {
-  return productWithVariantsSchema.safeParse({
+async function parseForm(formData: FormData) {
+  const t = await getTranslations("inventory");
+  return createProductWithVariantsSchema(t).safeParse({
     name: formData.get("name"),
     category_id: formData.get("category_id") || undefined,
     description: formData.get("description") || undefined,
@@ -41,9 +43,10 @@ function variantRow(variant: VariantFormValues, productId: string, storeId: stri
 }
 
 export async function createProduct(_prevState: ActionState, formData: FormData): Promise<ActionState> {
-  const parsed = parseForm(formData);
+  const t = await getTranslations("inventory");
+  const parsed = await parseForm(formData);
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Проверьте поля формы" };
+    return { error: parsed.error.issues[0]?.message ?? t("validationCheckFields") };
   }
 
   const store = await requireCurrentStore();
@@ -75,7 +78,7 @@ export async function createProduct(_prevState: ActionState, formData: FormData)
     // Without this the catalogue would keep a product that has nothing to sell:
     // no price, no stock, invisible on the storefront and unaddable to a cart.
     await supabase.from("products").delete().eq("id", product.id);
-    return { error: `Не удалось сохранить варианты: ${variantError.message}` };
+    return { error: t("errorSaveVariantsFailed", { message: variantError.message }) };
   }
 
   revalidatePath("/admin/inventory");
@@ -87,9 +90,10 @@ export async function updateProduct(
   _prevState: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const parsed = parseForm(formData);
+  const t = await getTranslations("inventory");
+  const parsed = await parseForm(formData);
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Проверьте поля формы" };
+    return { error: parsed.error.issues[0]?.message ?? t("validationCheckFields") };
   }
 
   const store = await requireCurrentStore();
@@ -124,10 +128,7 @@ export async function updateProduct(
   if (deleteError) {
     // Restricted by the sale_items foreign key: a variant that has ever been sold
     // cannot disappear, or historic receipts would lose what was actually bought.
-    return {
-      error:
-        "Нельзя удалить вариант, по которому уже были продажи. Обнулите остаток вместо удаления.",
-    };
+    return { error: t("errorVariantHasSales") };
   }
 
   const existing = submitted.filter((v) => v.id);

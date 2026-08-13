@@ -2,11 +2,13 @@
 
 import { useRef, useState } from "react";
 import { ImagePlus, Loader2, PackageX, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 
 export function ProductImageUpload({ initialUrl }: { initialUrl?: string | null }) {
+  const t = useTranslations("inventory");
   const supabase = createClient();
   const inputRef = useRef<HTMLInputElement>(null);
   const [url, setUrl] = useState(initialUrl ?? "");
@@ -37,7 +39,7 @@ export function ProductImageUpload({ initialUrl }: { initialUrl?: string | null 
 
   return (
     <div className="space-y-1.5">
-      <Label>Фото товара</Label>
+      <Label>{t("photoLabel")}</Label>
       <input type="hidden" name="image_url" value={url} />
       <input
         ref={inputRef}
@@ -68,17 +70,17 @@ export function ProductImageUpload({ initialUrl }: { initialUrl?: string | null 
           >
             {uploading ? (
               <>
-                <Loader2 className="h-4 w-4 animate-spin" /> Загрузка...
+                <Loader2 className="h-4 w-4 animate-spin" /> {t("uploading")}
               </>
             ) : (
               <>
-                <ImagePlus className="h-4 w-4" /> {url ? "Заменить фото" : "Загрузить фото"}
+                <ImagePlus className="h-4 w-4" /> {url ? t("replacePhoto") : t("uploadPhoto")}
               </>
             )}
           </Button>
           {url && (
             <Button type="button" variant="ghost" size="sm" onClick={() => setUrl("")}>
-              <X className="h-4 w-4" /> Убрать
+              <X className="h-4 w-4" /> {t("remove")}
             </Button>
           )}
         </div>

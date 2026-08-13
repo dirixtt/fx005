@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { LogoLockup } from "@/components/brand/logo";
 import { createClient } from "@/lib/supabase/server";
 import { resolveStore } from "@/lib/stores/resolve-store";
@@ -7,6 +8,8 @@ import { StoreProvider } from "@/lib/store-context";
 import { CartProvider } from "@/lib/cart-context";
 import { CartLink } from "@/components/storefront/cart-link";
 import { StorefrontSearch } from "@/components/storefront/storefront-search";
+import { LocaleToggle } from "@/components/locale-toggle";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export async function generateMetadata({
   params,
@@ -30,6 +33,7 @@ export default async function StoreLayout({
 }) {
   const { store: slug } = await params;
   const store = await resolveStore(slug);
+  const t = await getTranslations("storefront");
 
   const supabase = await createClient();
   const { data: categories } = await supabase
@@ -50,7 +54,7 @@ export default async function StoreLayout({
 
           <header className="sticky top-0 z-40 border-b border-neutral-200 bg-white/90 backdrop-blur">
             <div className="mx-auto flex max-w-6xl items-center gap-4 px-4 py-3.5">
-              <Link href={base} className="flex min-w-0 shrink items-center gap-2" aria-label={`${store.name} — на главную`}>
+              <Link href={base} className="flex min-w-0 shrink items-center gap-2" aria-label={t("homeAriaLabel", { name: store.name })}>
                 <LogoLockup className="shrink-0 text-brandnavy" />
                 <span className="truncate text-sm font-semibold text-neutral-900">{store.name}</span>
               </Link>
@@ -59,7 +63,11 @@ export default async function StoreLayout({
                 <StorefrontSearch />
               </div>
 
-              <CartLink />
+              <div className="flex shrink-0 items-center gap-1.5">
+                <LocaleToggle />
+                <ThemeToggle />
+                <CartLink />
+              </div>
             </div>
 
             {categories && categories.length > 0 && (
@@ -69,7 +77,7 @@ export default async function StoreLayout({
                     href={base}
                     className="shrink-0 rounded-full px-3 py-1 font-medium text-neutral-600 transition-colors hover:bg-brand-50 hover:text-brand-700"
                   >
-                    Все товары
+                    {t("allProducts")}
                   </Link>
                   {categories.map((c) => (
                     <Link

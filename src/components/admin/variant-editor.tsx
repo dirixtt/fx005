@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -58,6 +59,7 @@ function emptyRow(): Row {
  * index, which is why removing a row cannot shift another row's stock.
  */
 export function VariantEditor({ variants }: { variants?: Variant[] }) {
+  const t = useTranslations("inventory");
   const [rows, setRows] = useState<Row[]>(
     variants && variants.length > 0 ? variants.map(toRow) : [emptyRow()],
   );
@@ -77,9 +79,9 @@ export function VariantEditor({ variants }: { variants?: Variant[] }) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <Label>Размеры и остатки</Label>
+        <Label>{t("variantsLabel")}</Label>
         <Button type="button" variant="outline" size="sm" onClick={() => setRows((c) => [...c, emptyRow()])}>
-          <Plus className="h-4 w-4" /> Добавить размер
+          <Plus className="h-4 w-4" /> {t("addVariant")}
         </Button>
       </div>
 
@@ -90,27 +92,27 @@ export function VariantEditor({ variants }: { variants?: Variant[] }) {
 
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               <Field
-                label="Размер"
+                label={t("sizeLabel")}
                 name={`variants[${index}][size]`}
                 value={row.size}
-                placeholder="42"
+                placeholder={t("sizePlaceholder")}
                 onChange={(v) => update(row.key, "size", v)}
               />
               <Field
-                label="Цвет"
+                label={t("colorLabel")}
                 name={`variants[${index}][color]`}
                 value={row.color}
-                placeholder="чёрный"
+                placeholder={t("colorPlaceholder")}
                 onChange={(v) => update(row.key, "color", v)}
               />
               <Field
-                label="Артикул"
+                label={t("skuLabel")}
                 name={`variants[${index}][sku]`}
                 value={row.sku}
                 onChange={(v) => update(row.key, "sku", v)}
               />
               <Field
-                label="Штрихкод"
+                label={t("barcodeLabel")}
                 name={`variants[${index}][barcode]`}
                 value={row.barcode}
                 onChange={(v) => update(row.key, "barcode", v)}
@@ -119,7 +121,7 @@ export function VariantEditor({ variants }: { variants?: Variant[] }) {
 
             <div className="mt-2 flex flex-wrap items-end gap-2">
               <Field
-                label="Себестоимость"
+                label={t("costPriceLabel")}
                 name={`variants[${index}][cost_price]`}
                 value={row.cost_price}
                 type="number"
@@ -127,7 +129,7 @@ export function VariantEditor({ variants }: { variants?: Variant[] }) {
                 className="w-32"
               />
               <Field
-                label="Цена"
+                label={t("salePriceLabel")}
                 name={`variants[${index}][sale_price]`}
                 value={row.sale_price}
                 type="number"
@@ -136,7 +138,7 @@ export function VariantEditor({ variants }: { variants?: Variant[] }) {
                 className="w-32"
               />
               <Field
-                label="Остаток"
+                label={t("stockLabel")}
                 name={`variants[${index}][stock_quantity]`}
                 value={row.stock_quantity}
                 type="number"
@@ -153,7 +155,7 @@ export function VariantEditor({ variants }: { variants?: Variant[] }) {
                 className="ml-auto text-neutral-400 hover:text-red-600"
                 onClick={() => remove(row.key)}
                 disabled={rows.length <= 1}
-                aria-label="Удалить вариант"
+                aria-label={t("removeVariant")}
               >
                 <Trash2 className="h-4 w-4" />
               </Button>
@@ -162,9 +164,7 @@ export function VariantEditor({ variants }: { variants?: Variant[] }) {
         ))}
       </div>
 
-      <p className="text-xs text-neutral-500">
-        Товар без размеров — это один вариант с пустыми полями размера и цвета.
-      </p>
+      <p className="text-xs text-neutral-500">{t("noVariantsHint")}</p>
     </div>
   );
 }

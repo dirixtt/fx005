@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { motion } from "motion/react";
+import { useTranslations } from "next-intl";
 import { MessageCircleQuestion, Database, ShieldCheck, BellRing, Link2, Settings2 } from "lucide-react";
 import { LogoMark } from "@/components/brand/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { LocaleToggle } from "@/components/locale-toggle";
 import { ChatDemo } from "@/components/landing/chat-demo";
 import { StaggerItem } from "@/components/landing/stagger-section";
 
@@ -15,30 +17,10 @@ import { StaggerItem } from "@/components/landing/stagger-section";
  */
 
 const SELLER_STEPS = [
-  {
-    icon: Link2,
-    tint: "orange",
-    title: "Подключите Telegram Business",
-    body: "Код за минуту. Свой номер, без разработки.",
-  },
-  {
-    icon: Database,
-    tint: "blue",
-    title: "Ассистент читает вашу базу",
-    body: "Размеры, цвета, цены — всё, что вы вносите в кабинете.",
-  },
-  {
-    icon: ShieldCheck,
-    tint: "orange",
-    title: "Отвечает только по данным",
-    body: "Наличие и цену не придумывает — это правило в коде, не в промпте.",
-  },
-  {
-    icon: BellRing,
-    tint: "blue",
-    title: "Пропущенное приходит вам",
-    body: "Если не понял вопрос — тут же пишет вам в Telegram.",
-  },
+  { icon: Link2, tint: "orange", titleKey: "step1Title", bodyKey: "step1Body" },
+  { icon: Database, tint: "blue", titleKey: "step2Title", bodyKey: "step2Body" },
+  { icon: ShieldCheck, tint: "orange", titleKey: "step3Title", bodyKey: "step3Body" },
+  { icon: BellRing, tint: "blue", titleKey: "step4Title", bodyKey: "step4Body" },
 ] as const;
 
 function PrimaryButton({ href, children }: { href: string; children: React.ReactNode }) {
@@ -65,6 +47,8 @@ function GhostButton({ href, children }: { href: string; children: React.ReactNo
 }
 
 export default function LandingPage() {
+  const t = useTranslations("landing");
+
   return (
     <div className="flex min-h-screen flex-col bg-bg-app text-fg-primary transition-colors duration-300">
       <header className="sticky top-0 z-40 border-b border-divider bg-header-bg backdrop-blur-xl">
@@ -74,12 +58,13 @@ export default function LandingPage() {
             <span className="text-[17px] font-bold tracking-tight">Javob</span>
           </div>
           <div className="flex items-center gap-3">
+            <LocaleToggle />
             <ThemeToggle />
             <Link
               href="/admin/login"
               className="rounded-full border border-divider bg-glass-bg px-[18px] py-[9px] text-[13px] font-semibold text-fg-primary backdrop-blur-xl"
             >
-              Войти
+              {t("signIn")}
             </Link>
           </div>
         </div>
@@ -110,17 +95,14 @@ export default function LandingPage() {
               transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
             >
               <h1 className="text-[34px] font-bold leading-[1.05] tracking-tight sm:text-[42px] md:text-[52px]">
-                Клиенты пишут в Telegram.
+                {t("heroTitleLine1")}
                 <br />
-                Отвечает ассистент.
+                {t("heroTitleLine2")}
               </h1>
-              <p className="mt-5 max-w-md text-lg leading-relaxed text-fg-secondary">
-                Он берёт цену и наличие из вашей базы, никогда их не выдумывает, и передаёт вам всё, что не смог
-                сам.
-              </p>
+              <p className="mt-5 max-w-md text-lg leading-relaxed text-fg-secondary">{t("heroSubtitle")}</p>
               <div className="mt-8 flex flex-wrap items-center gap-3">
-                <PrimaryButton href="/admin/login">Начать бесплатно</PrimaryButton>
-                <GhostButton href="#how">Как это работает</GhostButton>
+                <PrimaryButton href="/admin/login">{t("ctaStart")}</PrimaryButton>
+                <GhostButton href="#how">{t("ctaHow")}</GhostButton>
               </div>
             </motion.div>
 
@@ -138,22 +120,19 @@ export default function LandingPage() {
         <section className="border-y border-divider bg-bg-app-2 py-14">
           <div className="mx-auto max-w-2xl px-6 text-center">
             <MessageCircleQuestion className="mx-auto h-8 w-8 text-fg-tertiary" strokeWidth={1.5} />
-            <p className="mt-5 text-xl leading-relaxed text-fg-secondary">
-              «42-й размер есть?» — сотый раз за день. Пока вы печатаете ответ, покупатель уже пишет в другой
-              магазин.
-            </p>
+            <p className="mt-5 text-xl leading-relaxed text-fg-secondary">{t("problemQuote")}</p>
           </div>
         </section>
 
         {/* How it works */}
         <section id="how" className="mx-auto max-w-5xl px-6 py-24 sm:px-12">
-          <h2 className="text-center text-[32px] font-bold tracking-tight">Как это работает</h2>
+          <h2 className="text-center text-[32px] font-bold tracking-tight">{t("howItWorksTitle")}</h2>
           <div className="mt-12 grid grid-cols-1 gap-5 sm:grid-cols-2">
             {SELLER_STEPS.map((step, i) => {
               const Icon = step.icon;
               return (
                 <StaggerItem
-                  key={step.title}
+                  key={step.titleKey}
                   index={i}
                   className="flex gap-4 rounded-[18px] border border-divider bg-glass-bg p-[22px] backdrop-blur-xl"
                 >
@@ -163,8 +142,8 @@ export default function LandingPage() {
                     <Icon className="h-4 w-4" strokeWidth={2.5} />
                   </div>
                   <div>
-                    <h3 className="font-bold text-fg-primary">{step.title}</h3>
-                    <p className="mt-1.5 text-sm leading-relaxed text-fg-secondary">{step.body}</p>
+                    <h3 className="font-bold text-fg-primary">{t(step.titleKey)}</h3>
+                    <p className="mt-1.5 text-sm leading-relaxed text-fg-secondary">{t(step.bodyKey)}</p>
                   </div>
                 </StaggerItem>
               );
@@ -176,16 +155,13 @@ export default function LandingPage() {
         <section className="border-y border-divider bg-bg-app-2 py-20">
           <div className="mx-auto grid max-w-5xl grid-cols-1 items-center gap-14 px-6 sm:px-12 md:grid-cols-2">
             <div>
-              <h2 className="text-[30px] font-bold tracking-tight">Для покупателя — обычный чат</h2>
-              <p className="mt-3.5 max-w-md leading-relaxed text-fg-secondary">
-                Вопрос на русском или узбекском — точный ответ за секунды, заказ прямо в Telegram. Ничего нового
-                устанавливать не нужно.
-              </p>
+              <h2 className="text-[30px] font-bold tracking-tight">{t("customerViewTitle")}</h2>
+              <p className="mt-3.5 max-w-md leading-relaxed text-fg-secondary">{t("customerViewBody")}</p>
             </div>
             <div className="mx-auto w-full max-w-sm space-y-2.5 rounded-[22px] border border-glass-border bg-glass-bg-strong p-[18px] shadow-[0_18px_44px_var(--shadow-color)] backdrop-blur-xl">
               <div className="flex justify-start">
                 <div className="max-w-[78%] rounded-2xl rounded-bl-sm bg-tint-neutral px-3.5 py-2.5 text-[13.5px] text-fg-primary">
-                  Kроссовки 40 размер есть?
+                  {t("customerChatQuestion")}
                 </div>
               </div>
               <div className="flex justify-end">
@@ -193,7 +169,7 @@ export default function LandingPage() {
                   className="max-w-[78%] rounded-2xl rounded-br-sm px-3.5 py-2.5 text-[13.5px] text-white"
                   style={{ background: "var(--accent-orange-grad)" }}
                 >
-                  Есть, белые, 40 — 320 000 сум.
+                  {t("customerChatAnswer")}
                 </div>
               </div>
             </div>
@@ -203,11 +179,8 @@ export default function LandingPage() {
         {/* What you control */}
         <section className="mx-auto max-w-2xl px-6 py-24 text-center sm:px-12">
           <Settings2 className="mx-auto h-8 w-8 text-fg-tertiary" strokeWidth={1.5} />
-          <h2 className="mt-5 text-[30px] font-bold tracking-tight">Вы решаете, что делает ассистент</h2>
-          <p className="mx-auto mt-3.5 max-w-lg leading-relaxed text-fg-secondary">
-            Включайте и выключайте каждую возможность в кабинете — наличие, цену, приём заказов, подбор по фото.
-            По умолчанию ничего не работает без вашего решения.
-          </p>
+          <h2 className="mt-5 text-[30px] font-bold tracking-tight">{t("controlTitle")}</h2>
+          <p className="mx-auto mt-3.5 max-w-lg leading-relaxed text-fg-secondary">{t("controlBody")}</p>
         </section>
 
         {/* Trust boundary — fixed dark surface in either theme, matching the design source */}
@@ -219,22 +192,19 @@ export default function LandingPage() {
             >
               <ShieldCheck className="h-[18px] w-[18px]" strokeWidth={2.5} style={{ color: "var(--accent-orange)" }} />
             </div>
-            <h2 className="mt-5 text-[28px] font-bold tracking-tight text-[#f5f4f2]">
-              Цену и наличие ассистент никогда не выдумывает
-            </h2>
+            <h2 className="mt-5 text-[28px] font-bold tracking-tight text-[#f5f4f2]">{t("trustTitle")}</h2>
             <p className="mx-auto mt-3.5 max-w-lg text-[15.5px] leading-[1.7] text-[rgba(245,244,242,0.6)]">
-              Модель только определяет вопрос и вызывает функцию — сам ответ код собирает из вашей базы. Если не
-              уверен, ассистент молчит и зовёт вас.
+              {t("trustBody")}
             </p>
           </div>
         </section>
 
         {/* Final CTA */}
         <section className="px-6 py-24 text-center sm:px-12">
-          <h2 className="text-[30px] font-bold tracking-tight">Начните бесплатно</h2>
-          <p className="mx-auto mt-3 text-fg-secondary">Кабинет откроется через минуту.</p>
+          <h2 className="text-[30px] font-bold tracking-tight">{t("finalCtaTitle")}</h2>
+          <p className="mx-auto mt-3 text-fg-secondary">{t("finalCtaBody")}</p>
           <div className="mt-7">
-            <PrimaryButton href="/admin/login">Начать бесплатно</PrimaryButton>
+            <PrimaryButton href="/admin/login">{t("ctaStart")}</PrimaryButton>
           </div>
         </section>
       </main>
@@ -242,7 +212,7 @@ export default function LandingPage() {
       <footer className="border-t border-divider">
         <div className="mx-auto flex max-w-6xl items-center gap-2.5 px-6 py-8 sm:px-12">
           <LogoMark className="h-[26px] w-[26px]" />
-          <span className="text-[13px] text-fg-tertiary">Javob — Telegram-ассистент для продавцов одежды и обуви.</span>
+          <span className="text-[13px] text-fg-tertiary">{t("footerTagline")}</span>
         </div>
       </footer>
     </div>

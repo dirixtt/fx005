@@ -1,20 +1,21 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import type { AppLocale } from "@/lib/i18n/locale";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-// Constructed once — formatMoney runs per row in product grids and report tables,
-// and building an Intl.NumberFormat on every call is measurably expensive.
-const moneyFormatter = new Intl.NumberFormat("ru-RU", {
-  style: "currency",
-  currency: "UZS",
-  maximumFractionDigits: 0,
-});
+// Constructed once per locale — formatMoney runs per row in product grids and
+// report tables, and building an Intl.NumberFormat on every call is measurably
+// expensive.
+const moneyFormatters: Record<AppLocale, Intl.NumberFormat> = {
+  ru: new Intl.NumberFormat("ru-RU", { style: "currency", currency: "UZS", maximumFractionDigits: 0 }),
+  uz: new Intl.NumberFormat("uz-Latn-UZ", { style: "currency", currency: "UZS", maximumFractionDigits: 0 }),
+};
 
-export function formatMoney(value: number) {
-  return moneyFormatter.format(value);
+export function formatMoney(value: number, locale: AppLocale = "ru") {
+  return moneyFormatters[locale].format(value);
 }
 
 // Russian and Uzbek Cyrillic, which most of the catalogue is written in. Without

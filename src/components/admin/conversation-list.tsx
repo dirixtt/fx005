@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
+import { useFormatter, useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 
 /**
@@ -20,26 +21,23 @@ export type ConversationMessage = {
   created_at: string;
 };
 
-const INTENT_LABELS: Record<string, string> = {
-  check_availability: "наличие",
-  ask_price: "цена",
-  place_order: "заказ",
-  other: "передано вам",
-};
-
-const time = (value: string) =>
-  new Date(value).toLocaleString("ru-RU", {
-    day: "2-digit",
-    month: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-
 export function ConversationList({ messages }: { messages: ConversationMessage[] }) {
+  const t = useTranslations("telegram");
+  const format = useFormatter();
+  const time = (value: string) =>
+    format.dateTime(new Date(value), { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+
+  const intentLabels: Record<string, string> = {
+    check_availability: t("intentAvailability"),
+    ask_price: t("intentPrice"),
+    place_order: t("intentOrder"),
+    other: t("intentOther"),
+  };
+
   if (messages.length === 0) {
     return (
       <p className="rounded-xl border border-neutral-200 py-12 text-center text-sm text-neutral-500">
-        Сообщений пока нет. Напишите продавцу со второго аккаунта — сообщение появится здесь.
+        {t("noMessages")}
       </p>
     );
   }
@@ -80,7 +78,7 @@ export function ConversationList({ messages }: { messages: ConversationMessage[]
                   animate={{ opacity: [1, 0.55, 1] }}
                   transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
                 >
-                  <Badge variant="warning">Ждёт ответа</Badge>
+                  <Badge variant="warning">{t("waitingReply")}</Badge>
                 </motion.span>
               )}
             </div>
@@ -107,11 +105,11 @@ export function ConversationList({ messages }: { messages: ConversationMessage[]
                           : "max-w-[85%] rounded-2xl rounded-br-sm bg-brand-600 px-3 py-2 text-sm whitespace-pre-wrap text-white"
                       }
                     >
-                      {message.text ?? <span className="opacity-60">без текста</span>}
+                      {message.text ?? <span className="opacity-60">{t("noText")}</span>}
                     </div>
                     <span className="mt-0.5 text-[11px] text-neutral-400">
                       {time(message.created_at)}
-                      {message.intent && ` · ${INTENT_LABELS[message.intent] ?? message.intent}`}
+                      {message.intent && ` · ${intentLabels[message.intent] ?? message.intent}`}
                     </span>
                   </motion.div>
                 );

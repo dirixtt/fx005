@@ -3,9 +3,11 @@
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Search } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useStore } from "@/lib/store-context";
 
 export function StorefrontSearch() {
+  const t = useTranslations("storefront");
   const router = useRouter();
   const searchParams = useSearchParams();
   const store = useStore();
@@ -29,7 +31,7 @@ export function StorefrontSearch() {
       <input
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        placeholder="Поиск товаров..."
+        placeholder={t("searchPlaceholder")}
         className="h-9 w-full rounded-full border border-neutral-300 bg-neutral-50 pl-9 pr-3 text-sm shadow-inner outline-none transition-colors focus:border-brand-400 focus:bg-white focus:ring-2 focus:ring-brand-100"
       />
     </form>

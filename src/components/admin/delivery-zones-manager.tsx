@@ -2,15 +2,19 @@
 
 import { useActionState } from "react";
 import { Trash2 } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import { addDeliveryZone, deleteDeliveryZone, type ActionState } from "@/lib/actions/assistant-settings";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatMoney } from "@/lib/utils";
 import type { Tables } from "@/lib/types/database.types";
+import type { AppLocale } from "@/lib/i18n/locale";
 
 type Zone = Tables<"delivery_zones">;
 
 export function DeliveryZonesManager({ zones }: { zones: Zone[] }) {
+  const t = useTranslations("settings");
+  const locale = useLocale() as AppLocale;
   const [state, formAction, pending] = useActionState<ActionState, FormData>(addDeliveryZone, undefined);
 
   return (
@@ -22,7 +26,7 @@ export function DeliveryZonesManager({ zones }: { zones: Zone[] }) {
               <span>
                 <span className="font-medium text-neutral-900">{zone.name}</span>
                 <span className="ml-2 text-neutral-500">
-                  {formatMoney(zone.price)}
+                  {formatMoney(zone.price, locale)}
                   {zone.eta_days ? ` · ${zone.eta_days}` : ""}
                 </span>
               </span>
@@ -30,7 +34,7 @@ export function DeliveryZonesManager({ zones }: { zones: Zone[] }) {
                 <button
                   type="submit"
                   className="text-neutral-400 transition-colors hover:text-red-600"
-                  aria-label={`Удалить зону ${zone.name}`}
+                  aria-label={t("removeZone", { name: zone.name })}
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -39,26 +43,24 @@ export function DeliveryZonesManager({ zones }: { zones: Zone[] }) {
           ))}
         </ul>
       ) : (
-        <p className="text-sm text-neutral-500">
-          Зоны не заданы — бот пока промолчит на вопрос о доставке.
-        </p>
+        <p className="text-sm text-neutral-500">{t("noZones")}</p>
       )}
 
       <form action={formAction} className="flex flex-wrap items-end gap-2">
         <div className="w-40 space-y-1.5">
-          <label className="text-xs font-medium text-neutral-700">Зона</label>
-          <Input name="name" placeholder="По Ташкенту" />
+          <label className="text-xs font-medium text-neutral-700">{t("zoneLabel")}</label>
+          <Input name="name" placeholder={t("zonePlaceholder")} />
         </div>
         <div className="w-32 space-y-1.5">
-          <label className="text-xs font-medium text-neutral-700">Цена</label>
-          <Input name="price" type="number" min={0} placeholder="20000" />
+          <label className="text-xs font-medium text-neutral-700">{t("priceLabel")}</label>
+          <Input name="price" type="number" min={0} placeholder={t("pricePlaceholder")} />
         </div>
         <div className="w-32 space-y-1.5">
-          <label className="text-xs font-medium text-neutral-700">Срок</label>
-          <Input name="eta_days" placeholder="1-2 дня" />
+          <label className="text-xs font-medium text-neutral-700">{t("etaLabel")}</label>
+          <Input name="eta_days" placeholder={t("etaPlaceholder")} />
         </div>
         <Button type="submit" variant="outline" size="sm" disabled={pending}>
-          Добавить
+          {t("add")}
         </Button>
       </form>
       {state?.error && <p className="text-sm text-red-600">{state.error}</p>}

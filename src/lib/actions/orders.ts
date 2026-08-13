@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 
 export type ActionState = { error?: string } | undefined;
@@ -10,6 +11,7 @@ export async function fulfillOrder(
   _prevState: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
+  const t = await getTranslations("orders");
   const paymentMethod = String(formData.get("payment_method") || "cash");
   const supabase = await createClient();
 
@@ -31,7 +33,7 @@ export async function fulfillOrder(
   }
 
   if (!data) {
-    return { error: "Заказ уже обработан или не найден — обновите страницу." };
+    return { error: t("errorAlreadyProcessed") };
   }
 
   revalidatePath("/admin/orders");

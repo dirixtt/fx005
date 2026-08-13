@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Tag } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -11,22 +12,27 @@ import { archiveProduct, restoreProduct } from "@/lib/actions/products";
 import { formatMoney, cn } from "@/lib/utils";
 import { priceRange, totalStock, variantLabel } from "@/lib/variants";
 import type { Tables } from "@/lib/types/database.types";
+import type { AppLocale } from "@/lib/i18n/locale";
 
 type Product = Tables<"products"> & {
   categories: { id: string; name: string } | null;
   product_variants: Tables<"product_variants">[];
 };
 
-/** "от 500 UZS" when sizes disagree on price, a single figure when they don't. */
-function formatPrice(product: Product): string {
-  const range = priceRange(product.product_variants);
-  if (!range) return "—";
-  return range.mixed ? `от ${formatMoney(range.min)}` : formatMoney(range.min);
-}
-
 export function InventoryTable({ products }: { products: Product[] }) {
+  const t = useTranslations("inventory");
+  const locale = useLocale() as AppLocale;
   const router = useRouter();
   const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  /** "от 500 UZS" when sizes disagree on price, a single figure when they don't. */
+  function formatPrice(product: Product): string {
+    const range = priceRange(product.product_variants);
+    if (!range) return "—";
+    return range.mixed
+      ? t("priceFrom", { price: formatMoney(range.min, locale) })
+      : formatMoney(range.min, locale);
+  }
 
   const allSelected = products.length > 0 && selected.size === products.length;
 
@@ -56,15 +62,15 @@ export function InventoryTable({ products }: { products: Product[] }) {
                 className="h-4 w-4 rounded border-neutral-300"
                 checked={allSelected}
                 onChange={toggleAll}
-                aria-label="Выбрать все"
+                aria-label={t("selectAll")}
               />
             </TableHead>
-            <TableHead>Название</TableHead>
-            <TableHead>Категория</TableHead>
-            <TableHead>Размеры</TableHead>
-            <TableHead>Цена</TableHead>
-            <TableHead>Остаток</TableHead>
-            <TableHead>Статус</TableHead>
+            <TableHead>{t("colName")}</TableHead>
+            <TableHead>{t("colCategory")}</TableHead>
+            <TableHead>{t("colSizes")}</TableHead>
+            <TableHead>{t("colPrice")}</TableHead>
+            <TableHead>{t("colStock")}</TableHead>
+            <TableHead>{t("colStatus")}</TableHead>
             <TableHead />
           </TableRow>
         </TableHeader>
@@ -77,7 +83,7 @@ export function InventoryTable({ products }: { products: Product[] }) {
                   className="h-4 w-4 rounded border-neutral-300"
                   checked={selected.has(p.id)}
                   onChange={() => toggle(p.id)}
-                  aria-label={`Выбрать ${p.name}`}
+                  aria-label={t("selectOne", { name: p.name })}
                 />
               </TableCell>
               <TableCell className="font-medium">
@@ -108,22 +114,22 @@ export function InventoryTable({ products }: { products: Product[] }) {
               <TableCell className="font-medium text-brand-700">{formatPrice(p)}</TableCell>
               <TableCell>
                 {totalStock(p.product_variants) <= 5 ? (
-                  <Badge variant="warning">{totalStock(p.product_variants)} мало</Badge>
+                  <Badge variant="warning">{t("lowStockBadge", { count: totalStock(p.product_variants) })}</Badge>
                 ) : (
                   totalStock(p.product_variants)
                 )}
               </TableCell>
               <TableCell>
                 {p.is_active ? (
-                  <Badge variant="success">Активен</Badge>
+                  <Badge variant="success">{t("statusActive")}</Badge>
                 ) : (
-                  <Badge variant="secondary">В архиве</Badge>
+                  <Badge variant="secondary">{t("statusArchived")}</Badge>
                 )}
               </TableCell>
               <TableCell>
                 <form action={p.is_active ? archiveProduct.bind(null, p.id) : restoreProduct.bind(null, p.id)}>
                   <Button type="submit" variant="ghost" size="sm">
-                    {p.is_active ? "В архив" : "Восстановить"}
+                    {p.is_active ? t("actionArchive") : t("actionRestore")}
                   </Button>
                 </form>
               </TableCell>
@@ -132,7 +138,7 @@ export function InventoryTable({ products }: { products: Product[] }) {
           {!products.length && (
             <TableRow>
               <TableCell colSpan={8} className={cn("py-8 text-center text-neutral-500")}>
-                Товары не найдены.
+                {t("empty")}
               </TableCell>
             </TableRow>
           )}
@@ -141,12 +147,14 @@ export function InventoryTable({ products }: { products: Product[] }) {
 
       {selectedIds.length > 0 && (
         <div className="sticky bottom-4 flex items-center justify-between rounded-xl border border-neutral-200 bg-white p-3 shadow-lg">
-          <span className="pl-2 text-sm font-medium text-neutral-700">Выбрано: {selectedIds.length}</span>
+          <span className="pl-2 text-sm font-medium text-neutral-700">
+            {t("selectedCount", { count: selectedIds.length })}
+          </span>
           <Button
             type="button"
             onClick={() => router.push(`/admin/inventory/labels?ids=${selectedIds.join(",")}`)}
           >
-            <Tag className="h-4 w-4" /> Печать ценников
+            <Tag className="h-4 w-4" /> {t("printLabels")}
           </Button>
         </div>
       )}

@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { LogoMark } from "@/components/brand/logo";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { OnboardingForm } from "@/components/admin/onboarding-form";
@@ -10,21 +11,23 @@ export default async function OnboardingPage() {
   const existing = await getCurrentStore();
   if (existing) redirect("/admin");
 
+  const t = await getTranslations("onboarding");
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-ink-950 px-4">
       <div className="w-full max-w-sm">
         <div className="mb-6 flex flex-col items-center gap-3 text-center">
           <LogoMark className="h-14 w-14 text-white" />
           <div>
-            <p className="text-lg font-bold text-white">Ваш магазин</p>
-            <p className="text-xs text-neutral-400">Последний шаг перед кабинетом</p>
+            <p className="text-lg font-bold text-white">{t("eyebrowTitle")}</p>
+            <p className="text-xs text-neutral-400">{t("eyebrowSubtitle")}</p>
           </div>
         </div>
 
         <Card className="border-neutral-800 bg-white">
           <CardHeader>
             <CardTitle className="text-base font-semibold normal-case tracking-normal text-neutral-900">
-              Создайте магазин
+              {t("cardTitle")}
             </CardTitle>
           </CardHeader>
           <CardContent>

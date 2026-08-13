@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,6 +27,7 @@ export function ProductForm({
   product?: Product;
   variants?: Variant[];
 }) {
+  const t = useTranslations("inventory");
   const [state, formAction, pending] = useActionState(action, undefined);
 
   return (
@@ -33,14 +35,14 @@ export function ProductForm({
       <ProductImageUpload initialUrl={product?.image_url} />
 
       <div className="space-y-1.5">
-        <Label htmlFor="name">Название товара</Label>
+        <Label htmlFor="name">{t("nameLabel")}</Label>
         <Input id="name" name="name" required defaultValue={product?.name} />
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="category_id">Категория</Label>
+        <Label htmlFor="category_id">{t("categoryLabel")}</Label>
         <Select id="category_id" name="category_id" defaultValue={product?.category_id ?? ""}>
-          <option value="">Без категории</option>
+          <option value="">{t("noCategoryOption")}</option>
           {categories.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
@@ -52,7 +54,7 @@ export function ProductForm({
       <VariantEditor variants={variants} />
 
       <div className="space-y-1.5">
-        <Label htmlFor="description">Описание</Label>
+        <Label htmlFor="description">{t("descriptionLabel")}</Label>
         <Textarea id="description" name="description" defaultValue={product?.description ?? ""} />
       </div>
 
@@ -65,14 +67,14 @@ export function ProductForm({
           defaultChecked={product?.show_on_storefront ?? true}
         />
         <Label htmlFor="show_on_storefront" className="font-normal">
-          Показывать на витрине
+          {t("showOnStorefront")}
         </Label>
       </div>
 
       {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
 
       <Button type="submit" disabled={pending}>
-        {pending ? "Сохранение..." : product ? "Сохранить изменения" : "Добавить товар"}
+        {pending ? t("saving") : product ? t("saveChanges") : t("addProduct")}
       </Button>
     </form>
   );

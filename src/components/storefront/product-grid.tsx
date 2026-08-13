@@ -4,9 +4,11 @@ import Link from "next/link";
 import Image from "next/image";
 import { motion } from "motion/react";
 import { PackageX } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import { formatMoney } from "@/lib/utils";
 import { priceRange, totalStock, type VariantLike } from "@/lib/variants";
 import { useStore } from "@/lib/store-context";
+import type { AppLocale } from "@/lib/i18n/locale";
 
 type Product = {
   id: string;
@@ -16,18 +18,22 @@ type Product = {
   product_variants: VariantLike[];
 };
 
-/**
- * Sizes of one model can differ in price, so a single figure would be a lie.
- * "от X" is shown only when they actually disagree.
- */
-function priceLabel(product: Product): string {
-  const range = priceRange(product.product_variants);
-  if (!range) return "—";
-  return range.mixed ? `от ${formatMoney(range.min)}` : formatMoney(range.min);
-}
-
 export function ProductGrid({ products }: { products: Product[] }) {
+  const t = useTranslations("storefront");
+  const locale = useLocale() as AppLocale;
   const store = useStore();
+
+  /**
+   * Sizes of one model can differ in price, so a single figure would be a lie.
+   * "от X" is shown only when they actually disagree.
+   */
+  function priceLabel(product: Product): string {
+    const range = priceRange(product.product_variants);
+    if (!range) return "—";
+    return range.mixed
+      ? t("priceFrom", { price: formatMoney(range.min, locale) })
+      : formatMoney(range.min, locale);
+  }
 
   return (
     <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
@@ -57,7 +63,7 @@ export function ProductGrid({ products }: { products: Product[] }) {
               )}
               {totalStock(p.product_variants) <= 0 && (
                 <span className="absolute left-2 top-2 rounded-full bg-neutral-900/80 px-2 py-0.5 text-[10px] font-medium text-white">
-                  Нет в наличии
+                  {t("outOfStock")}
                 </span>
               )}
             </div>

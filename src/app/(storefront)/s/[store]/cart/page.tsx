@@ -3,12 +3,16 @@
 import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
 import { Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import { useCart } from "@/lib/cart-context";
 import { useStore } from "@/lib/store-context";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn, formatMoney } from "@/lib/utils";
+import type { AppLocale } from "@/lib/i18n/locale";
 
 export default function CartPage() {
+  const t = useTranslations("cart");
+  const locale = useLocale() as AppLocale;
   const { items, updateQuantity, removeItem, subtotal } = useCart();
   const store = useStore();
   const base = `/s/${store.slug}`;
@@ -19,10 +23,10 @@ export default function CartPage() {
         <div className="flex h-16 w-16 items-center justify-center rounded-full bg-neutral-100 text-neutral-400">
           <ShoppingBag className="h-7 w-7" />
         </div>
-        <h1 className="text-xl font-semibold text-neutral-900">Корзина пуста</h1>
-        <p className="text-neutral-500">Загляните в каталог, чтобы что-нибудь выбрать.</p>
+        <h1 className="text-xl font-semibold text-neutral-900">{t("emptyTitle")}</h1>
+        <p className="text-neutral-500">{t("emptyBody")}</p>
         <Link href={base} className={buttonVariants()}>
-          В каталог
+          {t("toCatalog")}
         </Link>
       </div>
     );
@@ -31,7 +35,7 @@ export default function CartPage() {
   return (
     <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
       <div className="space-y-3 md:col-span-2">
-        <h1 className="text-2xl font-bold text-neutral-900">Корзина</h1>
+        <h1 className="text-2xl font-bold text-neutral-900">{t("title")}</h1>
 
         <div className="divide-y divide-neutral-100 rounded-xl border border-neutral-200 bg-white shadow-sm">
           <AnimatePresence initial={false}>
@@ -47,7 +51,7 @@ export default function CartPage() {
               >
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium text-neutral-900">{item.name}</p>
-                  <p className="text-sm text-neutral-500">{formatMoney(item.sale_price)}</p>
+                  <p className="text-sm text-neutral-500">{formatMoney(item.sale_price, locale)}</p>
                 </div>
                 <div className="flex items-center gap-1.5 rounded-lg border border-neutral-200 p-1">
                   <Button
@@ -71,7 +75,7 @@ export default function CartPage() {
                   </Button>
                 </div>
                 <p className="w-24 text-right font-semibold text-neutral-900">
-                  {formatMoney(item.sale_price * item.quantity)}
+                  {formatMoney(item.sale_price * item.quantity, locale)}
                 </p>
                 <Button
                   type="button"
@@ -90,14 +94,14 @@ export default function CartPage() {
 
       <div className="h-fit space-y-4 rounded-xl border border-neutral-200 bg-white p-5 shadow-sm">
         <div className="flex items-center justify-between text-lg font-semibold text-neutral-900">
-          <span>Итого</span>
-          <span>{formatMoney(subtotal)}</span>
+          <span>{t("total")}</span>
+          <span>{formatMoney(subtotal, locale)}</span>
         </div>
         <Link href={`${base}/checkout`} className={cn(buttonVariants({ size: "lg" }), "w-full")}>
-          Оформить заказ
+          {t("checkout")}
         </Link>
         <Link href={base} className="block text-center text-sm text-neutral-500 hover:text-brand-700">
-          Продолжить покупки
+          {t("continueShopping")}
         </Link>
       </div>
     </div>

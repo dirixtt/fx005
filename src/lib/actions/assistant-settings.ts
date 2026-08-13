@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { requireCurrentStore } from "@/lib/stores/current-store";
 
@@ -10,14 +11,15 @@ const PATH = "/admin/settings/assistant";
 const LANGUAGE_MODES = ["auto", "ru", "uz"] as const;
 
 export async function updateAssistantSettings(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const t = await getTranslations("settings");
   const reminderMinutes = Number(formData.get("reminder_minutes"));
   if (!Number.isFinite(reminderMinutes) || reminderMinutes <= 0) {
-    return { error: "Интервал напоминания должен быть положительным числом." };
+    return { error: t("errorReminderPositive") };
   }
 
   const languageMode = String(formData.get("language_mode") || "auto");
   if (!LANGUAGE_MODES.includes(languageMode as (typeof LANGUAGE_MODES)[number])) {
-    return { error: "Некорректный язык." };
+    return { error: t("errorInvalidLanguage") };
   }
 
   const signature = String(formData.get("signature") || "").trim();
@@ -74,12 +76,13 @@ export async function updateShopInfo(_prevState: ActionState, formData: FormData
 }
 
 export async function addDeliveryZone(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const t = await getTranslations("settings");
   const name = String(formData.get("name") || "").trim();
   const price = Number(formData.get("price"));
   const etaDays = String(formData.get("eta_days") || "").trim();
 
-  if (!name) return { error: "Укажите название зоны." };
-  if (!Number.isFinite(price) || price < 0) return { error: "Цена должна быть числом не меньше нуля." };
+  if (!name) return { error: t("errorZoneNameRequired") };
+  if (!Number.isFinite(price) || price < 0) return { error: t("errorPriceNonNegative") };
 
   const store = await requireCurrentStore();
   const supabase = await createClient();

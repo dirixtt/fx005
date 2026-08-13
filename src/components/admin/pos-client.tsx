@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { WifiOff, RefreshCw, Trash2 } from "lucide-react";
+import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarcodeCameraScanner } from "@/components/admin/barcode-camera-scanner";
 import { formatMoney } from "@/lib/utils";
 import { variantLabel } from "@/lib/variants";
+import type { AppLocale } from "@/lib/i18n/locale";
 import {
   isNetworkError,
   loadPendingSales,
@@ -43,6 +45,9 @@ type CartItem = {
 };
 
 export function PosClient({ variants, customers }: { variants: Variant[]; customers: Customer[] }) {
+  const t = useTranslations("pos");
+  const locale = useLocale() as AppLocale;
+  const format = useFormatter();
   const router = useRouter();
   const supabase = createClient();
 
@@ -132,7 +137,7 @@ export function PosClient({ variants, customers }: { variants: Variant[]; custom
   function addToCart(variant: Variant) {
     const available = availableStock[variant.id] ?? 0;
     if (available <= 0) {
-      setError(`${variant.name} is out of stock`);
+      setError(t("errorOutOfStock", { name: variant.name }));
       return;
     }
     setError(null);
@@ -164,7 +169,7 @@ export function PosClient({ variants, customers }: { variants: Variant[]; custom
       if (!item) return c;
       const available = availableStock[variantId] ?? 0;
       if (delta > 0 && available <= 0) {
-        setError("No more stock available for this item");
+        setError(t("errorNoMoreStock"));
         return c;
       }
       setAvailableStock((s) => ({ ...s, [variantId]: (s[variantId] ?? 0) - delta }));
@@ -186,7 +191,7 @@ export function PosClient({ variants, customers }: { variants: Variant[]; custom
   function lookupByBarcode(code: string) {
     const product = variants.find((p) => p.barcode === code);
     if (!product) {
-      setError(`Товар со штрихкодом "${code}" не найден`);
+      setError(t("errorBarcodeNotFound", { code }));
       return;
     }
     addToCart(product);
@@ -249,17 +254,17 @@ export function PosClient({ variants, customers }: { variants: Variant[]; custom
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
       <div className="space-y-4 lg:col-span-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h1 className="text-xl font-bold text-neutral-900">Касса</h1>
+          <h1 className="text-xl font-bold text-neutral-900">{t("title")}</h1>
           {(!online || pendingSales.length > 0) && (
             <div className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-sm text-amber-800">
               <WifiOff className="h-4 w-4 shrink-0" />
               <span>
-                {!online ? "Нет связи" : "Есть неотправленные продажи"}
-                {pendingSales.length > 0 && ` · ${pendingSales.length} в очереди`}
+                {!online ? t("offline") : t("pendingSales")}
+                {pendingSales.length > 0 && ` ${t("queueCount", { count: pendingSales.length })}`}
               </span>
               {online && pendingSales.length > 0 && (
                 <Button type="button" variant="ghost" size="sm" disabled={syncing} onClick={syncPendingSales}>
-                  <RefreshCw className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`} /> Отправить
+                  <RefreshCw className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`} /> {t("send")}
                 </Button>
               )}
             </div>
@@ -269,26 +274,26 @@ export function PosClient({ variants, customers }: { variants: Variant[]; custom
         <Card>
           <CardContent className="space-y-4 pt-4">
             <form onSubmit={handleBarcodeSubmit} className="space-y-1.5">
-              <Label htmlFor="barcode">Сканировать штрихкод</Label>
+              <Label htmlFor="barcode">{t("scanBarcodeLabel")}</Label>
               <Input
                 id="barcode"
                 ref={barcodeRef}
                 autoFocus
                 value={barcode}
                 onChange={(e) => setBarcode(e.target.value)}
-                placeholder="Сканером или вручную, затем Enter"
+                placeholder={t("scanPlaceholder")}
               />
             </form>
 
             <BarcodeCameraScanner onScan={lookupByBarcode} />
 
             <div className="space-y-1.5">
-              <Label htmlFor="search">Поиск товаров</Label>
+              <Label htmlFor="search">{t("searchProductsLabel")}</Label>
               <Input
                 id="search"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="По названию, артикулу или штрихкоду"
+                placeholder={t("searchPlaceholder")}
               />
               {searchResults.length > 0 && (
                 <div className="mt-1 divide-y divide-neutral-100 rounded-md border border-neutral-200 bg-white">
@@ -304,7 +309,7 @@ export function PosClient({ variants, customers }: { variants: Variant[]; custom
                     >
                       <span className="min-w-0 truncate">{p.name}</span>
                       <span className="shrink-0 text-neutral-500">
-                        {formatMoney(p.sale_price)} · остаток {availableStock[p.id] ?? 0}
+                        {t("searchResultMeta", { price: formatMoney(p.sale_price, locale), count: availableStock[p.id] ?? 0 })}
                       </span>
                     </button>
                   ))}
@@ -316,10 +321,10 @@ export function PosClient({ variants, customers }: { variants: Variant[]; custom
 
         <Card>
           <CardHeader>
-            <CardTitle>Корзина</CardTitle>
+            <CardTitle>{t("cartTitle")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {cart.length === 0 && <p className="text-sm text-neutral-500">Корзина пуста.</p>}
+            {cart.length === 0 && <p className="text-sm text-neutral-500">{t("cartEmpty")}</p>}
             {cart.map((item) => (
               <div
                 key={item.variant_id}
@@ -327,7 +332,7 @@ export function PosClient({ variants, customers }: { variants: Variant[]; custom
               >
                 <span className="min-w-0 flex-1 truncate font-medium">{item.name}</span>
                 <div className="flex items-center gap-2">
-                  <span className="text-neutral-500">{formatMoney(item.sale_price)}</span>
+                  <span className="text-neutral-500">{formatMoney(item.sale_price, locale)}</span>
                   <div className="flex items-center gap-1">
                     <Button type="button" variant="outline" size="sm" onClick={() => changeQuantity(item.variant_id, -1)}>
                       -
@@ -337,14 +342,14 @@ export function PosClient({ variants, customers }: { variants: Variant[]; custom
                       +
                     </Button>
                   </div>
-                  <span className="w-16 text-right font-medium">{formatMoney(item.sale_price * item.quantity)}</span>
+                  <span className="w-16 text-right font-medium">{formatMoney(item.sale_price * item.quantity, locale)}</span>
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
                     className="text-neutral-400 hover:text-red-600"
                     onClick={() => removeItem(item.variant_id)}
-                    aria-label="Удалить"
+                    aria-label={t("removeItem")}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -357,18 +362,18 @@ export function PosClient({ variants, customers }: { variants: Variant[]; custom
         {pendingSales.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle>Неотправленные продажи ({pendingSales.length})</CardTitle>
+              <CardTitle>{t("pendingSalesTitle", { count: pendingSales.length })}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               {pendingSales.map((s) => (
                 <div key={s.id} className="flex items-center justify-between text-sm">
                   <span className="text-neutral-600">
-                    {new Date(s.created_at).toLocaleTimeString("ru-RU")} · {s.items.length} поз.
+                    {format.dateTime(new Date(s.created_at), { hour: "2-digit", minute: "2-digit" })} · {t("posItemsCount", { count: s.items.length })}
                   </span>
                   {s.error ? (
                     <span className="text-xs text-red-600">{s.error}</span>
                   ) : (
-                    <span className="text-xs text-amber-600">ждёт связи</span>
+                    <span className="text-xs text-amber-600">{t("waitingForConnection")}</span>
                   )}
                 </div>
               ))}
@@ -380,13 +385,13 @@ export function PosClient({ variants, customers }: { variants: Variant[]; custom
       <div className="space-y-4">
         <Card>
           <CardHeader>
-            <CardTitle>Оформление</CardTitle>
+            <CardTitle>{t("checkoutTitle")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="customer">Клиент (необязательно)</Label>
+              <Label htmlFor="customer">{t("customerLabel")}</Label>
               <Select id="customer" value={customerId} onChange={(e) => setCustomerId(e.target.value)}>
-                <option value="">Без клиента</option>
+                <option value="">{t("noCustomer")}</option>
                 {customers.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.full_name} {c.phone ? `(${c.phone})` : ""}
@@ -396,26 +401,26 @@ export function PosClient({ variants, customers }: { variants: Variant[]; custom
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="payment">Способ оплаты</Label>
+              <Label htmlFor="payment">{t("paymentMethodLabel")}</Label>
               <Select
                 id="payment"
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value as typeof paymentMethod)}
               >
-                <option value="cash">Наличные</option>
-                <option value="card">Карта</option>
-                <option value="other">Другое</option>
+                <option value="cash">{t("paymentCash")}</option>
+                <option value="card">{t("paymentCard")}</option>
+                <option value="other">{t("paymentOther")}</option>
               </Select>
             </div>
 
             <div className="flex items-center justify-between border-t border-neutral-200 pt-3 text-base font-semibold">
-              <span>Итого</span>
-              <span>{formatMoney(subtotal)}</span>
+              <span>{t("total")}</span>
+              <span>{formatMoney(subtotal, locale)}</span>
             </div>
 
             {error && <p className="text-sm text-red-600">{error}</p>}
             {lastSaleId && (
-              <p className="text-sm text-green-700">Продажа оформлена (#{lastSaleId.slice(0, 8)}).</p>
+              <p className="text-sm text-green-700">{t("saleCreated", { id: lastSaleId.slice(0, 8) })}</p>
             )}
 
             <Button
@@ -424,7 +429,7 @@ export function PosClient({ variants, customers }: { variants: Variant[]; custom
               disabled={cart.length === 0 || submitting}
               onClick={completeSale}
             >
-              {submitting ? "Обработка..." : "Оформить продажу"}
+              {submitting ? t("processing") : t("completeSale")}
             </Button>
           </CardContent>
         </Card>

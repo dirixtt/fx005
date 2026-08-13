@@ -4,12 +4,14 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { ChevronLeft, PackageX } from "lucide-react";
+import { getLocale, getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { resolveStore } from "@/lib/stores/resolve-store";
 import { AddToCartButton } from "@/components/storefront/add-to-cart-button";
 import { ProductReveal } from "@/components/storefront/product-reveal";
 import { formatMoney } from "@/lib/utils";
 import { priceRange, totalStock } from "@/lib/variants";
+import type { AppLocale } from "@/lib/i18n/locale";
 
 const getProduct = cache(async (storeId: string, slug: string) => {
   const supabase = await createClient();
@@ -33,12 +35,14 @@ export async function generateMetadata({
 
   if (!product) return {};
 
+  const t = await getTranslations("storefront");
+  const locale = (await getLocale()) as AppLocale;
   const range = priceRange(product.product_variants);
   const description = product.description
     ? product.description.slice(0, 160)
     : range
-      ? `Купить ${product.name} за ${formatMoney(range.min)} — в наличии в ${store.name}.`
-      : `${product.name} — ${store.name}.`;
+      ? t("metaBuyDescription", { name: product.name, price: formatMoney(range.min, locale), store: store.name })
+      : t("metaProductStoreDescription", { name: product.name, store: store.name });
 
   return {
     title: product.name,
@@ -60,6 +64,7 @@ export default async function ProductDetailPage({
   const { store: storeSlug, slug } = await params;
   const store = await resolveStore(storeSlug);
   const product = await getProduct(store.id, slug);
+  const t = await getTranslations("storefront");
 
   if (!product) {
     notFound();
@@ -91,7 +96,7 @@ export default async function ProductDetailPage({
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <div className="space-y-6">
         <Link href={base} className="inline-flex items-center gap-1 text-sm font-medium text-neutral-500 hover:text-brand-700">
-          <ChevronLeft className="h-4 w-4" /> Назад к каталогу
+          <ChevronLeft className="h-4 w-4" /> {t("backToCatalog")}
         </Link>
 
         <ProductReveal>

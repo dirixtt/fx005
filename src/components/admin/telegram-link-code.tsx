@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import { useTranslations } from "next-intl";
 import { generateTelegramLinkCode, type LinkCodeState } from "@/lib/actions/telegram";
 import { Button } from "@/components/ui/button";
 
@@ -11,6 +12,7 @@ import { Button } from "@/components/ui/button";
  * The webhook's handleLinkAttempt is the other half.
  */
 export function TelegramLinkCode() {
+  const t = useTranslations("telegramSettings");
   const [state, formAction, pending] = useActionState<LinkCodeState, FormData>(
     async () => generateTelegramLinkCode(),
     undefined,
@@ -22,17 +24,14 @@ export function TelegramLinkCode() {
   return (
     <div className="space-y-4">
       <ol className="list-decimal space-y-1.5 pl-5 text-sm text-neutral-700">
-        <li>Нажмите «Получить код» ниже.</li>
-        <li>Откройте обычный чат с ботом в Telegram (не Business) и отправьте код.</li>
-        <li>
-          Затем в Telegram: Настройки → Telegram Business → Чат-боты — подключите того же бота и
-          разрешите ему отвечать.
-        </li>
+        <li>{t("step1")}</li>
+        <li>{t("step2")}</li>
+        <li>{t("step3")}</li>
       </ol>
 
       <form action={formAction}>
         <Button type="submit" disabled={pending}>
-          {pending ? "Генерирую…" : "Получить код"}
+          {pending ? t("generating") : t("getCode")}
         </Button>
       </form>
 
@@ -47,9 +46,7 @@ export function TelegramLinkCode() {
             className="rounded-lg border border-brand-200 bg-brand-50 px-4 py-3"
           >
             <p className="font-mono text-2xl font-bold tracking-widest text-brand-700">{result.code}</p>
-            <p className="mt-1 text-xs text-neutral-600">
-              Действует 10 минут. Отправьте этот код боту в обычном чате.
-            </p>
+            <p className="mt-1 text-xs text-neutral-600">{t("codeValidity")}</p>
           </motion.div>
         )}
       </AnimatePresence>

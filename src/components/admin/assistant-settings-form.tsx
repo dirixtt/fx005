@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { useTranslations } from "next-intl";
 import { updateAssistantSettings, type ActionState } from "@/lib/actions/assistant-settings";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,31 +12,26 @@ import type { Tables } from "@/lib/types/database.types";
 
 type Settings = Tables<"assistant_settings">;
 
-const CAPABILITIES: Array<{ name: keyof Settings; label: string; hint: string }> = [
-  { name: "can_answer_availability", label: "Наличие и размеры", hint: "«42 bormi», «есть чёрный?»" },
-  { name: "can_answer_price", label: "Цена", hint: "«сколько стоит», «narxi qancha»" },
-  { name: "can_answer_order_status", label: "Статус заказа", hint: "«где мой заказ»" },
-  { name: "can_answer_shop_info", label: "Доставка/оплата/часы", hint: "требует заполненных данных ниже" },
-  {
-    name: "can_match_photos",
-    label: "Поиск по фото",
-    hint: "фото без подписи — самая ненадёжная функция, включайте последней",
-  },
-  { name: "can_place_orders", label: "Оформление заказа", hint: "списывает остаток и создаёт заявку — включайте, только когда доверяете ответам выше" },
-];
-
 export function AssistantSettingsForm({ settings }: { settings: Settings }) {
+  const t = useTranslations("settings");
   const [state, formAction, pending] = useActionState<ActionState, FormData>(updateAssistantSettings, undefined);
+
+  const capabilities: Array<{ name: keyof Settings; label: string; hint: string }> = [
+    { name: "can_answer_availability", label: t("capAvailability"), hint: t("capAvailabilityHint") },
+    { name: "can_answer_price", label: t("capPrice"), hint: t("capPriceHint") },
+    { name: "can_answer_order_status", label: t("capOrderStatus"), hint: t("capOrderStatusHint") },
+    { name: "can_answer_shop_info", label: t("capShopInfo"), hint: t("capShopInfoHint") },
+    { name: "can_match_photos", label: t("capPhotos"), hint: t("capPhotosHint") },
+    { name: "can_place_orders", label: t("capOrders"), hint: t("capOrdersHint") },
+  ];
 
   return (
     <form action={formAction} className="space-y-5">
       <label className="flex items-center gap-3 rounded-lg border border-neutral-200 p-3">
         <input type="checkbox" name="enabled" defaultChecked={settings.enabled} className="h-4 w-4" />
         <span>
-          <span className="block text-sm font-medium text-neutral-900">Ассистент включён</span>
-          <span className="block text-xs text-neutral-500">
-            Выключено — бот не отвечает никому и не тратит запросы к ИИ, вы отвечаете сами как раньше.
-          </span>
+          <span className="block text-sm font-medium text-neutral-900">{t("enabledLabel")}</span>
+          <span className="block text-xs text-neutral-500">{t("enabledHint")}</span>
         </span>
       </label>
 
@@ -47,19 +43,14 @@ export function AssistantSettingsForm({ settings }: { settings: Settings }) {
           className="h-4 w-4"
         />
         <span>
-          <span className="block text-sm font-medium text-neutral-900">
-            Отвечать «секунду, уточню», когда бот не может помочь сам
-          </span>
-          <span className="block text-xs text-neutral-500">
-            Выключено — клиент не получает вообще ничего, пока вы не ответите вручную. Голосовые
-            сообщения тоже сюда относятся: бот их не распознаёт, только подтверждает получение.
-          </span>
+          <span className="block text-sm font-medium text-neutral-900">{t("ackLabel")}</span>
+          <span className="block text-xs text-neutral-500">{t("ackHint")}</span>
         </span>
       </label>
 
       <div className="space-y-2">
-        <p className="text-sm font-medium text-neutral-700">Что отвечает сам</p>
-        {CAPABILITIES.map((cap) => (
+        <p className="text-sm font-medium text-neutral-700">{t("whatItAnswersLabel")}</p>
+        {capabilities.map((cap) => (
           <label key={cap.name} className="flex items-center gap-3 rounded-lg border border-neutral-200 p-3">
             <input
               type="checkbox"
@@ -77,7 +68,7 @@ export function AssistantSettingsForm({ settings }: { settings: Settings }) {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
-          <Label htmlFor="reminder_minutes">Напомнить через, мин</Label>
+          <Label htmlFor="reminder_minutes">{t("reminderMinutesLabel")}</Label>
           <Input
             id="reminder_minutes"
             name="reminder_minutes"
@@ -87,38 +78,35 @@ export function AssistantSettingsForm({ settings }: { settings: Settings }) {
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="language_mode">Язык ответов</Label>
+          <Label htmlFor="language_mode">{t("languageModeLabel")}</Label>
           <Select id="language_mode" name="language_mode" defaultValue={settings.language_mode}>
-            <option value="auto">Автоматически (по языку клиента)</option>
-            <option value="ru">Всегда русский</option>
-            <option value="uz">Всегда узбекский</option>
+            <option value="auto">{t("languageAuto")}</option>
+            <option value="ru">{t("languageRu")}</option>
+            <option value="uz">{t("languageUz")}</option>
           </Select>
         </div>
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="signature">Подпись (добавляется в конец каждого ответа)</Label>
+        <Label htmlFor="signature">{t("signatureLabel")}</Label>
         <Textarea id="signature" name="signature" defaultValue={settings.signature ?? ""} rows={2} />
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="extra_instructions">Доп. инструкции для распознавания</Label>
+        <Label htmlFor="extra_instructions">{t("extraInstructionsLabel")}</Label>
         <Textarea
           id="extra_instructions"
           name="extra_instructions"
           defaultValue={settings.extra_instructions ?? ""}
           rows={3}
-          placeholder="Например: клиенты называют кроссовки словом «кеды». Артикулы у нас четырёхзначные."
+          placeholder={t("extraInstructionsPlaceholder")}
         />
-        <p className="text-xs text-neutral-500">
-          Влияет только на то, что бот понимает — не на то, что он говорит. Цену и наличие он всегда
-          берёт из базы, это правило это поле изменить не может.
-        </p>
+        <p className="text-xs text-neutral-500">{t("extraInstructionsHint")}</p>
       </div>
 
       <div className="flex items-center gap-3">
         <Button type="submit" disabled={pending}>
-          Сохранить
+          {t("save")}
         </Button>
         {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
       </div>

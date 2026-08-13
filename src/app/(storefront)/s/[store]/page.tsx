@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { resolveStore } from "@/lib/stores/resolve-store";
 import { ProductGrid } from "@/components/storefront/product-grid";
@@ -13,8 +14,9 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { q } = await searchParams;
   if (!q) return {};
+  const t = await getTranslations("storefront");
   return {
-    title: `Поиск: ${q}`,
+    title: t("metaSearchTitle", { q }),
     robots: { index: false, follow: true },
   };
 }
@@ -26,6 +28,7 @@ export default async function StoreHomePage({
   params: Promise<{ store: string }>;
   searchParams: Promise<{ category?: string; q?: string; page?: string }>;
 }) {
+  const t = await getTranslations("storefront");
   const { store: slug } = await params;
   const store = await resolveStore(slug);
   const { category, q, page: pageParam } = await searchParams;
@@ -67,13 +70,13 @@ export default async function StoreHomePage({
       <div className="overflow-hidden rounded-2xl bg-ink-950 px-6 py-8 sm:px-10 sm:py-12">
         <p className="text-xs font-semibold uppercase tracking-widest text-brand-400">{store.name}</p>
         <h1 className="mt-2 max-w-lg text-2xl font-bold leading-tight tracking-tight text-white sm:text-3xl">
-          {q ? `Результаты по запросу «${q}»` : store.tagline || "Каталог товаров"}
+          {q ? t("searchResultsTitle", { q }) : store.tagline || t("catalogFallbackTitle")}
         </h1>
-        <p className="mt-2 max-w-md text-sm text-neutral-400">{count ?? 0} товаров в наличии.</p>
+        <p className="mt-2 max-w-md text-sm text-neutral-400">{t("productsInStock", { count: count ?? 0 })}</p>
       </div>
 
       {!products?.length ? (
-        <p className="py-12 text-center text-neutral-500">Товары не найдены — попробуйте другой запрос.</p>
+        <p className="py-12 text-center text-neutral-500">{t("noProductsFound")}</p>
       ) : (
         <>
           <ProductGrid products={products} />

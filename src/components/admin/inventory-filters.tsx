@@ -3,10 +3,12 @@
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Search } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 
 export function InventoryFilters({ categories }: { categories: { id: string; name: string }[] }) {
+  const t = useTranslations("inventory");
   const router = useRouter();
   const searchParams = useSearchParams();
   const [q, setQ] = useState(searchParams.get("q") ?? "");
@@ -34,7 +36,7 @@ export function InventoryFilters({ categories }: { categories: { id: string; nam
         <Input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Поиск по названию..."
+          placeholder={t("searchPlaceholder")}
           className="pl-9"
         />
       </form>
@@ -43,7 +45,7 @@ export function InventoryFilters({ categories }: { categories: { id: string; nam
         onChange={(e) => updateParams({ category: e.target.value || undefined })}
         className="w-56"
       >
-        <option value="">Все категории</option>
+        <option value="">{t("allCategories")}</option>
         {categories.map((c) => (
           <option key={c.id} value={c.id}>
             {c.name}

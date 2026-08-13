@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { AddCustomerForm } from "@/components/admin/add-customer-form";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -11,6 +12,7 @@ export default async function CustomersPage({
 }: {
   searchParams: Promise<{ page?: string }>;
 }) {
+  const t = await getTranslations("customers");
   const { page: pageParam } = await searchParams;
   const page = Math.max(1, Number(pageParam) || 1);
   const supabase = await createClient();
@@ -28,8 +30,8 @@ export default async function CustomersPage({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-bold tracking-tight text-neutral-900">Клиенты</h1>
-        <p className="text-sm text-neutral-500">{count ?? 0} клиентов всего</p>
+        <h1 className="text-xl font-bold tracking-tight text-neutral-900">{t("title")}</h1>
+        <p className="text-sm text-neutral-500">{t("countLabel", { count: count ?? 0 })}</p>
       </div>
 
       <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
@@ -39,9 +41,9 @@ export default async function CustomersPage({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Имя</TableHead>
-            <TableHead>Телефон</TableHead>
-            <TableHead>Email</TableHead>
+            <TableHead>{t("colName")}</TableHead>
+            <TableHead>{t("colPhone")}</TableHead>
+            <TableHead>{t("colEmail")}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -59,7 +61,7 @@ export default async function CustomersPage({
           {!customers?.length && (
             <TableRow>
               <TableCell colSpan={3} className="py-8 text-center text-neutral-500">
-                Клиентов пока нет.
+                {t("empty")}
               </TableCell>
             </TableRow>
           )}

@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { ProductForm } from "@/components/admin/product-form";
 import { updateProduct } from "@/lib/actions/products";
 
 export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
+  const t = await getTranslations("inventory");
   const { id } = await params;
   const supabase = await createClient();
 
@@ -23,9 +25,11 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
     <div className="space-y-6">
       <div>
         <Link href="/admin/inventory" className="text-sm text-neutral-500 hover:text-brand-700 hover:underline">
-          ← Назад к складу
+          {t("backToInventory")}
         </Link>
-        <h1 className="mt-1 text-xl font-bold text-neutral-900">Редактировать: {product.name}</h1>
+        <h1 className="mt-1 text-xl font-bold text-neutral-900">
+          {t("editProductTitle", { name: product.name })}
+        </h1>
       </div>
       <ProductForm
         action={boundAction}

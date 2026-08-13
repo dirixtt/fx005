@@ -1,3 +1,4 @@
+import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,6 +14,7 @@ import { TelegramLinkCode } from "@/components/admin/telegram-link-code";
  * handleLinkAttempt for the other half.
  */
 export default async function TelegramLinkPage() {
+  const t = await getTranslations("telegramSettings");
   const supabase = await createClient();
 
   // RLS already scopes this to the caller's own store — no explicit store_id
@@ -26,31 +28,27 @@ export default async function TelegramLinkPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-bold tracking-tight text-neutral-900">Подключение Telegram</h1>
-        <p className="text-sm text-neutral-500">
-          Привяжите свой Telegram Business аккаунт, чтобы бот начал отвечать вашим клиентам.
-        </p>
+        <h1 className="text-xl font-bold tracking-tight text-neutral-900">{t("pageTitle")}</h1>
+        <p className="text-sm text-neutral-500">{t("pageSubtitle")}</p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Статус</CardTitle>
+          <CardTitle>{t("statusTitle")}</CardTitle>
         </CardHeader>
         <CardContent className="flex items-center gap-3">
           <Badge variant={connection?.is_enabled && connection.can_reply ? "success" : "secondary"}>
-            {connection?.is_enabled && connection.can_reply ? "Подключено" : "Не подключено"}
+            {connection?.is_enabled && connection.can_reply ? t("connected") : t("notConnected")}
           </Badge>
           {connection && !connection.can_reply && (
-            <span className="text-xs text-amber-700">
-              Бот подключён, но не может отвечать — разрешите это в Telegram Business настройках.
-            </span>
+            <span className="text-xs text-amber-700">{t("cannotReplyNote")}</span>
           )}
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Привязать аккаунт</CardTitle>
+          <CardTitle>{t("linkAccountTitle")}</CardTitle>
         </CardHeader>
         <CardContent>
           <TelegramLinkCode />

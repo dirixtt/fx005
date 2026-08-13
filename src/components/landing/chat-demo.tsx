@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
+import { useTranslations } from "next-intl";
 
 /**
  * A replayed, not live, exchange — the same slide-in-from-sender-side language
@@ -8,17 +9,18 @@ import { motion } from "motion/react";
  * reused here because it's the one motion idiom on this site that's actually
  * about a real product behaviour: this is what a customer's screen looks like.
  */
-const EXCHANGE = [
-  { from: "customer", text: "Bomber 42 bormi?" },
-  { from: "bot", text: "Есть, бомбер чёрный, 42 — 450 000 сум." },
-  { from: "customer", text: "Оформите" },
-  { from: "bot", text: "Отлично! Имя и телефон — и оформлю заказ." },
-] as const;
-
 export function ChatDemo() {
+  const t = useTranslations("landing");
+  const exchange = [
+    { from: "customer", text: t("heroChatQ1") },
+    { from: "bot", text: t("heroChatA1") },
+    { from: "customer", text: t("heroChatQ2") },
+    { from: "bot", text: t("heroChatA2") },
+  ] as const;
+
   return (
     <div className="mx-auto max-w-sm space-y-2.5 rounded-[26px] border border-glass-border bg-glass-bg-strong p-5 shadow-[0_24px_60px_var(--shadow-color)] backdrop-blur-xl">
-      {EXCHANGE.map((message, i) => {
+      {exchange.map((message, i) => {
         const fromCustomer = message.from === "customer";
         return (
           <motion.div

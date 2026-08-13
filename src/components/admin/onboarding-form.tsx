@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { motion } from "motion/react";
+import { useTranslations } from "next-intl";
 import { createStore, type CreateStoreState } from "@/lib/actions/onboarding";
 import { slugify } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export function OnboardingForm() {
+  const t = useTranslations("onboarding");
   const [state, formAction, pending] = useActionState<CreateStoreState, FormData>(createStore, undefined);
   const [name, setName] = useState("");
   const [slugTouched, setSlugTouched] = useState(false);
@@ -19,19 +21,19 @@ export function OnboardingForm() {
   return (
     <form action={formAction} className="space-y-4">
       <div className="space-y-1.5">
-        <Label htmlFor="name">Название магазина</Label>
+        <Label htmlFor="name">{t("nameLabel")}</Label>
         <Input
           id="name"
           name="name"
           required
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Например: Bahor Style"
+          placeholder={t("namePlaceholder")}
         />
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="slug">Адрес витрины</Label>
+        <Label htmlFor="slug">{t("slugLabel")}</Label>
         <div className="flex items-center gap-1 text-sm text-neutral-500">
           <span className="shrink-0">/s/</span>
           <Input
@@ -42,7 +44,7 @@ export function OnboardingForm() {
               setSlugTouched(true);
               setSlug(slugify(e.target.value).slice(0, 40));
             }}
-            placeholder="bahor-style"
+            placeholder={t("slugPlaceholder")}
             className="font-mono"
           />
         </div>
@@ -53,14 +55,14 @@ export function OnboardingForm() {
           transition={{ duration: 0.15 }}
           className="text-xs text-neutral-500"
         >
-          Ваша витрина будет по адресу /s/{previewSlug || "…"}
+          {t("slugPreview", { slug: previewSlug || "…" })}
         </motion.p>
       </div>
 
       {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
 
       <Button type="submit" className="w-full" disabled={pending}>
-        {pending ? "Создаю…" : "Создать магазин"}
+        {pending ? t("submitting") : t("submit")}
       </Button>
     </form>
   );

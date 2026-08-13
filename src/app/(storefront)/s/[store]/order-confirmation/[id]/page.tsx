@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CheckCircle2 } from "lucide-react";
+import { getLocale, getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { resolveStore } from "@/lib/stores/resolve-store";
 import { buttonVariants } from "@/components/ui/button";
 import { formatMoney } from "@/lib/utils";
+import type { AppLocale } from "@/lib/i18n/locale";
 
 type OrderStatusItem = { product_name: string; quantity: number; unit_price: number; line_total: number };
 
@@ -13,6 +15,8 @@ export default async function OrderConfirmationPage({
 }: {
   params: Promise<{ store: string; id: string }>;
 }) {
+  const t = await getTranslations("checkout");
+  const locale = (await getLocale()) as AppLocale;
   const { store: storeSlug, id } = await params;
   const store = await resolveStore(storeSlug);
   const supabase = await createClient();
@@ -31,11 +35,14 @@ export default async function OrderConfirmationPage({
       <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-50 text-green-600">
         <CheckCircle2 className="h-9 w-9" />
       </div>
-      <h1 className="text-2xl font-bold text-neutral-900">Спасибо, {order.customer_name}!</h1>
+      <h1 className="text-2xl font-bold text-neutral-900">{t("thankYou", { name: order.customer_name })}</h1>
       <p className="text-neutral-600">
-        Ваш заказ <span className="font-mono">#{order.id.slice(0, 8)}</span> оформлен и сейчас{" "}
-        <span className="font-medium">{order.status === "pending" ? "в обработке" : order.status}</span>. Мы свяжемся
-        с вами для подтверждения оплаты и доставки.
+        {t.rich("confirmationBody", {
+          orderIdShort: order.id.slice(0, 8),
+          statusLabel: order.status === "pending" ? t("statusPending") : order.status,
+          id: (chunks) => <span className="font-mono">{chunks}</span>,
+          status: (chunks) => <span className="font-medium">{chunks}</span>,
+        })}
       </p>
 
       <div className="divide-y divide-neutral-100 rounded-xl border border-neutral-200 bg-white p-5 text-left shadow-sm">
@@ -44,17 +51,17 @@ export default async function OrderConfirmationPage({
             <span>
               {item.product_name} × {item.quantity}
             </span>
-            <span className="font-medium">{formatMoney(item.line_total)}</span>
+            <span className="font-medium">{formatMoney(item.line_total, locale)}</span>
           </div>
         ))}
         <div className="flex justify-between pt-3 text-base font-bold text-neutral-900">
-          <span>Итого</span>
-          <span>{formatMoney(order.total)}</span>
+          <span>{t("total")}</span>
+          <span>{formatMoney(order.total, locale)}</span>
         </div>
       </div>
 
       <Link href={`/s/${store.slug}`} className={buttonVariants({ size: "lg" })}>
-        Продолжить покупки
+        {t("continueShopping")}
       </Link>
     </div>
   );

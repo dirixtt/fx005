@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
+import { useTranslations } from "next-intl";
 import { LogoMark } from "@/components/brand/logo";
 import { createClient } from "@/lib/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -16,6 +17,7 @@ import { Label } from "@/components/ui/label";
  * exactly one, from before this pivot) lands there too.
  */
 export default function LoginPage() {
+  const t = useTranslations("login");
   const router = useRouter();
   const supabase = createClient();
 
@@ -31,11 +33,11 @@ export default function LoginPage() {
     setError(null);
 
     if (password !== confirmPassword) {
-      setError("Пароли не совпадают");
+      setError(t("passwordMismatch"));
       return;
     }
     if (password.length < 8) {
-      setError("Пароль должен быть не короче 8 символов");
+      setError(t("passwordTooShort"));
       return;
     }
 
@@ -103,23 +105,26 @@ export default function LoginPage() {
         <div className="mb-6 flex flex-col items-center text-center">
           <LogoMark className="mb-4 h-11 w-11 shadow-[0_6px_18px_rgba(79,101,235,0.35)]" />
           <h1 className="text-[22px] font-bold tracking-tight">
-            {mode === "signup" ? "Создать аккаунт" : "Войти в кабинет"}
+            {mode === "signup" ? t("titleSignup") : t("titleLogin")}
           </h1>
-          <p className="mt-1.5 text-[13.5px] text-fg-tertiary">Доступ только для владельца магазина</p>
+          <p className="mt-1.5 text-[13.5px] text-fg-tertiary">{t("subtitle")}</p>
         </div>
 
         {mode === "check-email" && (
           <div className="space-y-4 text-sm text-fg-secondary">
             <p>
-              Мы отправили ссылку для подтверждения на <strong className="text-fg-primary">{email}</strong>.
+              {t.rich("checkEmailText", {
+                email,
+                strong: (chunks) => <strong className="text-fg-primary">{chunks}</strong>,
+              })}
             </p>
-            <p>Перейдите по ссылке в письме, затем вернитесь и войдите ниже.</p>
+            <p>{t("checkEmailInstructions")}</p>
             <button
               type="button"
               onClick={() => setMode("login")}
               className="w-full rounded-full border border-divider bg-glass-bg px-4 py-3 text-sm font-semibold text-fg-primary backdrop-blur-xl"
             >
-              Перейти ко входу
+              {t("goToLogin")}
             </button>
           </div>
         )}
@@ -128,7 +133,7 @@ export default function LoginPage() {
           <form onSubmit={mode === "signup" ? handleSignup : handleLogin} className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="email" className="text-[12.5px] font-semibold text-fg-secondary">
-                Email
+                {t("emailLabel")}
               </Label>
               <Input
                 id="email"
@@ -142,7 +147,7 @@ export default function LoginPage() {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="password" className="text-[12.5px] font-semibold text-fg-secondary">
-                Пароль
+                {t("passwordLabel")}
               </Label>
               <Input
                 id="password"
@@ -158,7 +163,7 @@ export default function LoginPage() {
             {mode === "signup" && (
               <div className="space-y-1.5">
                 <Label htmlFor="confirmPassword" className="text-[12.5px] font-semibold text-fg-secondary">
-                  Подтвердите пароль
+                  {t("confirmPasswordLabel")}
                 </Label>
                 <Input
                   id="confirmPassword"
@@ -178,12 +183,12 @@ export default function LoginPage() {
               className="w-full rounded-full px-4 py-3.5 text-[14.5px] font-semibold text-white shadow-[0_10px_26px_rgba(79,101,235,0.32)] transition-transform active:scale-[0.98] disabled:opacity-60 disabled:active:scale-100"
               style={{ background: "var(--accent-orange-grad)" }}
             >
-              {submitting ? "Подождите..." : mode === "signup" ? "Создать аккаунт" : "Войти"}
+              {submitting ? t("submitting") : mode === "signup" ? t("createAccount") : t("signIn")}
             </button>
 
             <div className="flex items-center gap-3 py-1">
               <div className="h-px flex-1 bg-divider" />
-              <span className="text-xs text-fg-tertiary">или</span>
+              <span className="text-xs text-fg-tertiary">{t("or")}</span>
               <div className="h-px flex-1 bg-divider" />
             </div>
 
@@ -195,7 +200,7 @@ export default function LoginPage() {
               }}
               className="w-full text-center text-[13.5px] text-fg-secondary hover:text-fg-primary"
             >
-              {mode === "signup" ? "Уже есть аккаунт? Войти" : "Ещё нет аккаунта? Создать"}
+              {mode === "signup" ? t("toggleToLogin") : t("toggleToSignup")}
             </button>
           </form>
         )}

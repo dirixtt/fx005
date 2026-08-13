@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "motion/react";
+import { useTranslations } from "next-intl";
 import {
   LayoutDashboard,
   ScanBarcode,
@@ -17,19 +18,20 @@ import {
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { href: "/admin", label: "Дашборд", icon: LayoutDashboard },
-  { href: "/admin/pos", label: "Касса", icon: ScanBarcode },
-  { href: "/admin/inventory", label: "Склад", icon: Boxes },
-  { href: "/admin/customers", label: "Клиенты", icon: Users },
-  { href: "/admin/orders", label: "Заказы", icon: ClipboardList },
-  { href: "/admin/telegram", label: "Диалоги", icon: MessagesSquare },
-  { href: "/admin/settings/telegram", label: "Подключение Telegram", icon: Link2 },
-  { href: "/admin/settings/assistant", label: "Настройки бота", icon: Settings },
-  { href: "/admin/reports", label: "Отчёты", icon: BarChart3 },
-];
+  { href: "/admin", labelKey: "dashboard", icon: LayoutDashboard },
+  { href: "/admin/pos", labelKey: "pos", icon: ScanBarcode },
+  { href: "/admin/inventory", labelKey: "inventory", icon: Boxes },
+  { href: "/admin/customers", labelKey: "customers", icon: Users },
+  { href: "/admin/orders", labelKey: "orders", icon: ClipboardList },
+  { href: "/admin/telegram", labelKey: "telegram", icon: MessagesSquare },
+  { href: "/admin/settings/telegram", labelKey: "settingsTelegram", icon: Link2 },
+  { href: "/admin/settings/assistant", labelKey: "settingsAssistant", icon: Settings },
+  { href: "/admin/reports", labelKey: "reports", icon: BarChart3 },
+] as const;
 
 export function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
+  const t = useTranslations("nav");
 
   return (
     <nav className="flex flex-1 flex-col gap-1 p-3">
@@ -55,7 +57,7 @@ export function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
               />
             )}
             <Icon className="relative z-10 h-4 w-4" strokeWidth={2} />
-            <span className="relative z-10">{item.label}</span>
+            <span className="relative z-10">{t(item.labelKey)}</span>
           </Link>
         );
       })}

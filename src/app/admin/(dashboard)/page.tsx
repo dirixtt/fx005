@@ -1,11 +1,16 @@
 import Link from "next/link";
 import { AlertTriangle, Clock, Wallet } from "lucide-react";
+import { getFormatter, getLocale, getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { StatCard } from "@/components/admin/stat-card";
 import { formatMoney } from "@/lib/utils";
 import { variantLabel } from "@/lib/variants";
+import type { AppLocale } from "@/lib/i18n/locale";
 
 export default async function DashboardPage() {
+  const t = await getTranslations("dashboard");
+  const format = await getFormatter();
+  const locale = (await getLocale()) as AppLocale;
   const supabase = await createClient();
 
   const startOfToday = new Date();
@@ -35,28 +40,26 @@ export default async function DashboardPage() {
 
   const todayRevenue = todaySales?.reduce((sum, s) => sum + s.total, 0) ?? 0;
 
-  const today = new Intl.DateTimeFormat("ru-RU", { weekday: "long", day: "numeric", month: "long" }).format(
-    new Date(),
-  );
+  const today = format.dateTime(new Date(), { weekday: "long", day: "numeric", month: "long" });
 
   return (
     <div className="-m-4 min-h-[calc(100vh-3.5rem)] space-y-6 bg-bg-app p-4 transition-colors duration-300 md:-m-6 md:min-h-screen md:p-6">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h1 className="text-2xl font-bold tracking-tight text-fg-primary">Дашборд</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-fg-primary">{t("title")}</h1>
         <span className="text-[13px] capitalize text-fg-tertiary">{today}</span>
       </div>
 
       <div className="grid grid-cols-1 gap-[18px] sm:grid-cols-3">
         <StatCard
           icon={<Wallet className="h-5 w-5" strokeWidth={2} />}
-          label="Выручка сегодня"
-          value={formatMoney(todayRevenue)}
+          label={t("statRevenueToday")}
+          value={formatMoney(todayRevenue, locale)}
           accent="brand"
           index={0}
         />
         <StatCard
           icon={<Clock className="h-5 w-5" strokeWidth={2} />}
-          label="Ожидают обработки"
+          label={t("statPendingOrders")}
           value={pendingOrders ?? 0}
           href="/admin/orders"
           accent="blue"
@@ -64,7 +67,7 @@ export default async function DashboardPage() {
         />
         <StatCard
           icon={<AlertTriangle className="h-5 w-5" strokeWidth={2} />}
-          label="Товары заканчиваются"
+          label={t("statLowStock")}
           value={lowStock?.length ?? 0}
           accent={lowStock && lowStock.length > 0 ? "amber" : "neutral"}
           index={2}
@@ -74,7 +77,7 @@ export default async function DashboardPage() {
       {lowStock && lowStock.length > 0 && (
         <div className="rounded-[18px] border border-glass-border bg-glass-bg p-6 shadow-[0_6px_22px_var(--shadow-color)] backdrop-blur-xl">
           <h3 className="mb-3.5 text-[11px] font-bold uppercase tracking-[0.04em] text-fg-tertiary">
-            Заканчивается на складе
+            {t("lowStockTitle")}
           </h3>
           <div className="divide-y divide-divider">
             {lowStock.map((v) => (
@@ -88,7 +91,7 @@ export default async function DashboardPage() {
                   <span className="ml-1.5 font-normal text-fg-tertiary">{variantLabel(v)}</span>
                 </Link>
                 <span className="shrink-0 rounded-full bg-tint-orange px-2.5 py-0.5 text-xs font-semibold text-accent-orange">
-                  {v.stock_quantity} шт.
+                  {t("unitsShort", { count: v.stock_quantity })}
                 </span>
               </div>
             ))}

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { PlusCircle } from "lucide-react";
+import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +16,7 @@ export default async function InventoryPage({
 }: {
   searchParams: Promise<{ category?: string; q?: string; page?: string }>;
 }) {
+  const t = await getTranslations("inventory");
   const { category, q, page: pageParam } = await searchParams;
   const page = Math.max(1, Number(pageParam) || 1);
   const supabase = await createClient();
@@ -48,11 +50,11 @@ export default async function InventoryPage({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-neutral-900">Склад</h1>
-          <p className="text-sm text-neutral-500">{count ?? 0} товаров всего</p>
+          <h1 className="text-xl font-bold tracking-tight text-neutral-900">{t("title")}</h1>
+          <p className="text-sm text-neutral-500">{t("countLabel", { count: count ?? 0 })}</p>
         </div>
         <Link href="/admin/inventory/new" className={buttonVariants()}>
-          <PlusCircle className="h-4 w-4" /> Добавить товар
+          <PlusCircle className="h-4 w-4" /> {t("addProduct")}
         </Link>
       </div>
 

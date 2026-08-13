@@ -1,3 +1,4 @@
+import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AssistantSettingsForm } from "@/components/admin/assistant-settings-form";
@@ -14,6 +15,7 @@ import { DeliveryZonesManager } from "@/components/admin/delivery-zones-manager"
  * than no setting.
  */
 export default async function AssistantSettingsPage() {
+  const t = await getTranslations("settings");
   const supabase = await createClient();
 
   const [{ data: settings }, { data: shopInfo }, { data: zones }] = await Promise.all([
@@ -27,7 +29,7 @@ export default async function AssistantSettingsPage() {
     // means the migration has not been applied, not a state to design a UI for.
     return (
       <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
-        Таблица настроек ассистента не найдена. Примените миграцию 0011_assistant_settings.
+        {t("migrationMissing")}
       </p>
     );
   }
@@ -35,11 +37,11 @@ export default async function AssistantSettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-bold tracking-tight text-neutral-900">Настройки ассистента</h1>
+        <h1 className="text-xl font-bold tracking-tight text-neutral-900">{t("pageTitle")}</h1>
         <p className="text-sm text-neutral-500">
-          Что бот отвечает сам, а что передаёт вам — см. живые диалоги в{" "}
+          {t("pageSubtitleBeforeLink")}{" "}
           <a href="/admin/telegram" className="text-brand-700 hover:underline">
-            «Диалогах»
+            {t("pageSubtitleLinkText")}
           </a>
           .
         </p>
@@ -47,7 +49,7 @@ export default async function AssistantSettingsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Ассистент</CardTitle>
+          <CardTitle>{t("assistantCardTitle")}</CardTitle>
         </CardHeader>
         <CardContent>
           <AssistantSettingsForm settings={settings} />
@@ -56,7 +58,7 @@ export default async function AssistantSettingsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Оплата и часы работы</CardTitle>
+          <CardTitle>{t("paymentHoursCardTitle")}</CardTitle>
         </CardHeader>
         <CardContent>
           <ShopInfoForm info={shopInfo ?? { payment_text: null, hours_text: null }} />
@@ -65,7 +67,7 @@ export default async function AssistantSettingsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Доставка</CardTitle>
+          <CardTitle>{t("deliveryCardTitle")}</CardTitle>
         </CardHeader>
         <CardContent>
           <DeliveryZonesManager zones={zones ?? []} />

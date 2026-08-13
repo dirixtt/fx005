@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 
 export type LinkCodeState = { code: string; expiresAt: string } | { error: string } | undefined;
@@ -22,11 +23,12 @@ function randomCode(): string {
  * is simpler than a separate existence check.
  */
 export async function generateTelegramLinkCode(): Promise<LinkCodeState> {
+  const t = await getTranslations("telegramSettings");
   const supabase = await createClient();
 
   const { data: storeId, error: storeError } = await supabase.rpc("auth_store_id");
   if (storeError || !storeId) {
-    return { error: "Магазин не найден. Завершите настройку магазина, прежде чем подключать Telegram." };
+    return { error: t("errorStoreNotFound") };
   }
 
   const expiresAt = new Date(Date.now() + CODE_LIFETIME_MS).toISOString();
@@ -48,5 +50,5 @@ export async function generateTelegramLinkCode(): Promise<LinkCodeState> {
     }
   }
 
-  return { error: "Не получилось сгенерировать код, попробуйте ещё раз." };
+  return { error: t("errorGenerateFailed") };
 }

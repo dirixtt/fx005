@@ -1,3 +1,4 @@
+import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { LabelsPrintView } from "@/components/admin/labels-print-view";
 
@@ -6,6 +7,7 @@ export default async function InventoryLabelsPage({
 }: {
   searchParams: Promise<{ ids?: string }>;
 }) {
+  const t = await getTranslations("inventory");
   const { ids } = await searchParams;
   const idList = ids ? ids.split(",").filter(Boolean) : [];
 
@@ -25,10 +27,8 @@ export default async function InventoryLabelsPage({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-bold tracking-tight text-neutral-900">Печать ценников</h1>
-        <p className="text-sm text-neutral-500">
-          {variants?.length ?? 0} ценников · по одному на каждый размер
-        </p>
+        <h1 className="text-xl font-bold tracking-tight text-neutral-900">{t("labelsTitle")}</h1>
+        <p className="text-sm text-neutral-500">{t("labelsCountLabel", { count: variants?.length ?? 0 })}</p>
       </div>
       <LabelsPrintView variants={variants ?? []} />
     </div>
